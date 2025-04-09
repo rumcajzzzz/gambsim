@@ -1,0 +1,25 @@
+@import "./variables.css"; 
+
+.link {
+	font-size: 1.125rem;
+	padding: 10px;
+	margin: 0 30px;
+	border-radius: 5px;
+	transition: color 0.3s, background-color 0.3s;
+  }
+  
+  .link--active {
+	color: var(--text-active-color);
+  }
+  
+  .link--inactive {
+	color: var(--text-inactive-color);
+  }
+  
+  
+.navbar {
+	position: sticky;
+	top: 45px;
+	left: 50%;
+	transform: translateX(-50%);
+}
