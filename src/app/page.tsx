@@ -1,6 +1,8 @@
   "use client";
+  import axios from "axios";
   import { motion, useAnimation } from "framer-motion";
-  import { useState, useEffect } from "react";
+  import { useState, useEffect, useRef } from "react";
+  
 
   const baseColors = [
     "green", "red", "black", "red", "black", "red", "black", "red", "black", 
@@ -22,10 +24,16 @@
   };
 
   export default function Home() {
-    const playSound = (src: string) => {
-      const audio = new Audio(src);
-      audio.play();
+    const playSound = (type: "roll" | "land") => {
+      if (!audioUnlocked) return;
+    
+      const audioRef = type === "roll" ? slotRollAudioRef.current : slotLandAudioRef.current;
+      if (audioRef) {
+        audioRef.currentTime = 0; 
+        audioRef.play().catch(() => {});
+      }
     };
+    
     const timeRoundLength = 20;
     const slots = buildSlotArray();
     const controls = useAnimation();
@@ -47,7 +55,37 @@
 
     const [showRefuel, setShowRefuel] = useState(false); 
 
+    const slotRollAudioRef = useRef<HTMLAudioElement | null>(null);
+    const slotLandAudioRef = useRef<HTMLAudioElement | null>(null);
+    const [audioUnlocked, setAudioUnlocked] = useState(false);
 
+    useEffect(() => {
+      const unlockAudio = () => {
+        if (!audioUnlocked) {
+          slotRollAudioRef.current = new Audio("./assets/mp3/slotroll.mp3");
+          slotLandAudioRef.current = new Audio("./assets/mp3/slotland.mp3");
+    
+          // Try playing muted to unlock audio policy
+          slotRollAudioRef.current.muted = true;
+          slotRollAudioRef.current.play().then(() => {
+            slotRollAudioRef.current!.muted = false;
+            setAudioUnlocked(true);
+          }).catch(() => {
+            // If it fails, still mark as unlocked so we don't retry forever
+            setAudioUnlocked(true);
+          });
+    
+          window.removeEventListener("click", unlockAudio);
+        }
+      };
+    
+      window.addEventListener("click", unlockAudio);
+    
+      return () => {
+        window.removeEventListener("click", unlockAudio);
+      };
+    }, [audioUnlocked]);
+    
     useEffect(() => {
       const initialIndex = safeLoopZone + centerSlot;
       setLogicalIndex(initialIndex);
@@ -73,12 +111,13 @@
         });
       }, 1000);
 
-      return () => clearInterval(interval);
+        return () => clearInterval(interval);
     }, [timeLeft, isRolling]);
 
     const roll = async () => {
       setIsRolling(true);
-      playSound("./assets/mp3/slotroll.mp3");
+      playSound("roll");
+      setBetAmount(0);
 
       if (betColor !== null) {
         setPoints(points);
@@ -102,7 +141,7 @@
         setLogicalIndex(newSafeIndex);
       };
 
-      playSound("./assets/mp3/slotland.mp3");
+      playSound("land");
       viewReset();
 
       
@@ -136,7 +175,7 @@
       if (newPoints < 0) {
         newPoints = 0;
         setShowRefuel(true);
-      }
+      };
 
       setPoints(newPoints);
 
@@ -146,12 +185,26 @@
     };
 
     const updateBalance = (bet: number) => {
+      if (bet > points) return;
       setPoints(prevPoints => prevPoints - bet);
-    }
+    };
+    
     const refuel = () => {
       setPoints(1000);
       setShowRefuel(false);
     };
+
+    const placeBet = (color: string) => {
+      if (betAmount <= 0 || betAmount > points || !canBet) return;
+    
+      updateBalance(betAmount);
+      setBetColor(color);
+    
+      if (color === "red") setRedBet(prev => prev + betAmount);
+      if (color === "green") setGreenBet(prev => prev + betAmount);
+      if (color === "black") setBlackBet(prev => prev + betAmount);
+    };
+    
 
     return (
       <main className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
@@ -203,7 +256,7 @@
 
         <div className="flex items-center justify-center m-12 text-xl font-semibold ">
 
-          <p className="px-15 py-6 rounded m-5 text-center border border-gray-300">
+          <p className="text-red-300 text-2xl px-15 py-11 rounded m-5 text-center border border-gray-300">
             Points: {points < 0 ? 0 : points}
           </p>
 
@@ -249,11 +302,7 @@
         <div className="mt-6 flex justify-center items-center space-x-6">
           <button
             disabled={!canBet}
-            onClick={() => {
-              updateBalance(betAmount);
-              setBetColor("red");
-              setRedBet(betAmount);
-            }}
+            onClick={() => placeBet("red")}
             className={`bg-red-600 text-white px-6 py-2 rounded-xl border-2 ${
               betColor === "red" ? "border-yellow-500" : "border-transparent"
             } hover:bg-red-800 hover:cursor-pointer transition ${!canBet ? "opacity-50 !cursor-not-allowed" : ""}`}
@@ -261,11 +310,7 @@
             Red
           </button>
           <button
-            onClick={() => {
-              updateBalance(betAmount);
-              setBetColor("green");
-              setGreenBet(betAmount);
-            }}
+            onClick={() => placeBet("green")}
             className={`bg-green-600 text-white px-6 py-2 rounded-xl border-2 ${
               betColor === "green" ? "border-yellow-500" : "border-transparent"
             } hover:bg-green-800 hover:cursor-pointer transition ${!canBet ? "opacity-50 !cursor-not-allowed" : ""}`}
@@ -273,11 +318,7 @@
             Green
           </button>
           <button
-            onClick={() => {
-              updateBalance(betAmount);
-              setBetColor("black");
-              setBlackBet(betAmount);
-            }}
+            onClick={() => placeBet("black")}
             className={`bg-black text-white px-6 py-2 rounded-xl border-2 ${
               betColor === "black" ? "border-yellow-500" : "border-transparent"
             } hover:bg-gray-800 hover:cursor-pointer transition ${!canBet ? "opacity-50 !cursor-not-allowed" : ""}`}
