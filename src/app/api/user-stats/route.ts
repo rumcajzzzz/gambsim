@@ -1,12 +1,12 @@
 import { auth } from '@clerk/nextjs/server';
 import { connect } from '@/lib/mongo';
 import UserStats from '@lib/models/user.model';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { clerkClient } from '@clerk/nextjs/server';
 
 export async function GET() {
   try {
-    const { userId } = await auth();
+    const { userId, has} = await auth();
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -16,12 +16,10 @@ export async function GET() {
 
     const user = await (await clerkClient()).users.getUser(userId);
 
+    
     if (!user) {
       return NextResponse.json({ error: 'User data not found in Clerk' }, { status: 404 });
     }
-
-    console.log("\n\nLogging user:");
-    console.log(user);
 
     const updatedUserData = {
       user_id: userId,
@@ -71,3 +69,36 @@ export async function GET() {
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
   }
 }
+
+export async function POST(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  try {
+    const { amountChange, setBalance } = await req.json();
+
+    await connect();
+
+    const userStats = await UserStats.findOne({ user_id: userId });
+
+    if (!userStats) {
+      return NextResponse.json({ error: 'User stats not found' }, { status: 404 });
+    }
+
+    if (typeof amountChange === 'number') {
+      userStats.current_balance += amountChange;  // Add or subtract balance based on bet outcome
+    } else if (typeof setBalance === 'number') {
+      userStats.current_balance = setBalance;  // Set the balance (e.g., for refueling)
+    }
+
+    // Ensure balance doesn't go negative
+    userStats.current_balance = Math.max(userStats.current_balance, 0);
+
+    await userStats.save();
+    return NextResponse.json(userStats);
+  } catch (err) {
+    console.error('Error updating stats:', err);
+    return NextResponse.json({ error: 'Failed to update stats' }, { status: 500 });
+  }
+}
+

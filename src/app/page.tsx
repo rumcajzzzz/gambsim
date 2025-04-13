@@ -22,6 +22,7 @@
   };
 
   export default function Home() {
+
     const playSound = (type: "roll" | "land") => {
       if (!audioUnlocked) return;
     
@@ -31,8 +32,7 @@
         audioRef.play().catch(() => {});
       }
     };
-    
-    const timeRoundLength = 20;
+    const timeRoundLength = 6;
     const slots = buildSlotArray();
     const controls = useAnimation();
     
@@ -42,7 +42,7 @@
     const [logicalIndex, setLogicalIndex] = useState(0);
     
     const [rolledSlot, setRolledSlot] = useState<number | null>(null);
-    const [points, setPoints] = useState(1000);
+    const [points, setPoints] = useState(0);
     const [betAmount, setBetAmount] = useState(0);
     const [betColor, setBetColor] = useState<string | null>(null);
     const [rollHistory, setRollHistory] = useState<number[]>([]);
@@ -85,6 +85,24 @@
       window.removeEventListener("click", unlockAudio);
     };
     }, [audioUnlocked]);
+
+    useEffect(() => {
+      const fetchUserBalance = async () => {
+        try {
+          const res = await fetch('/api/user-stats');
+          if (res.ok) {
+            const data = await res.json();
+            setPoints(data.current_balance); // Initialize balance
+          } else {
+            console.error('Failed to fetch user stats');
+          }
+        } catch (err) {
+          console.error('Error fetching user stats:', err);
+        }
+      };
+  
+      fetchUserBalance();
+    }, []);
 
     useEffect(() => {
       const initialIndex = safeLoopZone + centerSlot;
@@ -144,8 +162,6 @@
       playSound("land");
       viewReset();
 
-      
-
       setRollHistory((prevHistory) => {
         const newHistory = [rolledSlotIndex, ...prevHistory];
         return newHistory.slice(0, 10);
@@ -154,14 +170,19 @@
       setTimeout(() => {
         setTimeLeft(timeRoundLength);
         setIsRolling(false);
+        setRedBet(0);
+        setGreenBet(0);
+        setBlackBet(0);
+
       }, 500);
       if (betColor !== null) {
         handleBetResult(rolledSlotIndex);
       }
     };
 
-    const handleBetResult = (rolledSlotIndex: number) => {
+    const handleBetResult = async (rolledSlotIndex: number) => {
       let newPoints = points;
+
       if (baseColors[rolledSlotIndex] === "green" && greenBet > 0) {
         newPoints += greenBet * 14;
       } else if (baseColors[rolledSlotIndex] === "red" && redBet > 0) {
@@ -172,36 +193,95 @@
         newPoints -= redBet + greenBet + blackBet;
       }
 
-      if (newPoints < 0) {
-        newPoints = 0;
+      newPoints = Math.max(newPoints, 0);
+    
+      setPoints(newPoints);  
+
+      try {
+        // Big IF to check if user placed any bet
+        if (redBet > 0 || greenBet > 0 || blackBet > 0) {
+          const res = await fetch('/api/user-stats', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amountChange: newPoints - points }),
+          });
+    
+          if (!res.ok) {
+            console.error('Failed to update balance in DB');
+          } else {
+            const updatedStats = await res.json();
+            console.log('Balance updated in DB:', updatedStats);
+          }
+        } else {
+          console.log('No bet was placed. Skipping DB update.');
+        }
+      } catch (err) {
+        console.error('Error updating balance in DB:', err);
+      }
+      if(newPoints == 0 ) {
         setShowRefuel(true);
-      };
-
-      setPoints(newPoints);
-      setRedBet(0);
-      setGreenBet(0);
-      setBlackBet(0);
+      }
+      
     };
 
-    const updateBalance = (bet: number) => {
-      if (bet > points) return;
+    const updateBalance = async (bet: number) => {
+      if (bet > points || bet <= 0) return; 
       setPoints(prevPoints => prevPoints - bet);
-    };
-    
-    const refuel = () => {
-      setPoints(1000);
-      setShowRefuel(false);
-    };
+  
+      try {
+        const res = await fetch('/api/user-stats', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ amountChange: -bet }),
+        });
+  
+        if (!res.ok) {
+          console.error('Failed to update balance in DB');
+        } else {
+          const updatedStats = await res.json();
+          console.log('Balance updated in DB:', updatedStats);
+        }
+      } catch (err) {
+        console.error('Error updating balance:', err);
+      }
 
-    const placeBet = (color: string) => {
-      if (betAmount <= 0 || betAmount > points || !canBet) return;
+    };
     
+    const refuel = async () => {
+      const newBalance = 1000;
+      setPoints(newBalance);
+      setShowRefuel(false);
+    
+      try {
+        const res = await fetch('/api/user-stats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ setBalance: newBalance }),
+        });
+    
+        if (!res.ok) {
+          console.error('Failed to refuel on server');
+        } else {
+          const updatedStats = await res.json();
+          console.log('Balance refueled in DB:', updatedStats);
+        }
+      } catch (err) {
+        console.error('Error refueling:', err);
+      }
+    };
+    
+    const placeBet = (color: string) => {
+      if (betAmount <= 0 || betAmount > points) return; 
+  
       updateBalance(betAmount);
       setBetColor(color);
     
       if (color === "red") setRedBet(prev => prev + betAmount);
       if (color === "green") setGreenBet(prev => prev + betAmount);
       if (color === "black") setBlackBet(prev => prev + betAmount);
+      
     };
     
     return (
@@ -255,7 +335,7 @@
         <div className="flex items-center justify-center m-12 text-xl font-semibold ">
 
           <p className="text-red-300 text-2xl px-15 py-11 rounded m-5 text-center border border-gray-300">
-            Balance: {points !== null ? points : "0"}
+            Balance: {points}
           </p>
 
           <div 
