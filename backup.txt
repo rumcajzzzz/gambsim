@@ -1,0 +1,275 @@
+import { auth } from '@clerk/nextjs/server';
+import { connect } from '@/lib/mongo';
+import UserStats from '@lib/models/user.model';
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await connect();
+
+    let stats = await UserStats.findOne({ user_id: userId });
+
+    if (!stats) {
+      stats = await UserStats.create({
+        user_id: userId,
+        bets_placed: 0,
+        bets_won: 0,
+        bets_lost: 0,
+        total_betted_amount: 0,
+        total_won: 0,
+        total_lost: 0,
+        greens_won: 0,
+        current_balance: 0,
+      });
+    }
+
+    return NextResponse.json(stats);
+  } catch (err) {
+    console.error('Error in user-stats GET:', err);
+    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
+  }
+}
+
+
+
+//// 2nd backup 
+
+import { auth } from '@clerk/nextjs/server';
+import { connect } from '@/lib/mongo';
+import UserStats from '@lib/models/user.model';
+import { NextResponse } from 'next/server';
+import { clerkClient } from '@clerk/nextjs/server';
+
+export async function GET() {
+  try {
+    // Get the userId from Clerk's auth
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Connect to the MongoDB database
+    await connect();
+
+    // Fetch the user's details from Clerk
+    const user = await (await clerkClient()).users.getUser(userId);
+
+    if (!user) {
+      return NextResponse.json({ error: 'User data not found in Clerk' }, { status: 404 });
+    }
+
+    // Find the user in the database by userId
+    let stats = await UserStats.findOne({ user_id: userId });
+
+    const updatedUserData = {
+      user_id: userId,
+      username: user.username || '', // Clerk username
+      email: user.emailAddresses[0].emailAddress, // Clerk email
+      first_name: user.firstName || '', // Clerk first name
+      last_name: user.lastName || '', // Clerk last name
+    };
+
+    if (!stats) {
+      stats = await UserStats.create({
+        ...updatedUserData,
+        bets_placed: 0,
+        bets_won: 0,
+        bets_lost: 0,
+        total_betted_amount: 0,
+        total_won: 0,
+        total_lost: 0,
+        greens_won: 0,
+        current_balance: 0,
+      });
+    } else {
+      // If the user exists, check if any of the fields have changed and update them
+      let updated = false;
+      for (const [key, value] of Object.entries(updatedUserData)) {
+        if (stats[key] !== value) {
+          stats[key] = value;
+          updated = true;
+        }
+      }
+
+      // If there are any updates, save the document
+      if (updated) {
+        await stats.save();
+      }
+    }
+
+	console.log("\n\nLogging user:")
+	console.log(user)
+
+    return NextResponse.json(stats);
+  } catch (err) {
+    console.error('Error in user-stats GET:', err);
+    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
+  }
+}
+
+
+
+////// 3rd backup working 
+
+import { auth } from '@clerk/nextjs/server';
+import { connect } from '@/lib/mongo';
+import UserStats from '@lib/models/user.model';
+import { NextResponse } from 'next/server';
+import { clerkClient } from '@clerk/nextjs/server';
+
+export async function GET() {
+  try {
+    // Get the userId from Clerk's auth
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Connect to the MongoDB database
+    await connect();
+
+    // Fetch the user's details from Clerk
+    const user = await (await clerkClient()).users.getUser(userId);
+
+    if (!user) {
+      return NextResponse.json({ error: 'User data not found in Clerk' }, { status: 404 });
+    }
+
+    // Log the user object to inspect its structure
+    console.log("\n\nLogging user:");
+    console.log(user);
+
+    // Extract user data from Clerk's response
+    const updatedUserData = {
+      user_id: userId,
+      username: user.username || '',  // Clerk username
+      email: user.emailAddresses?.[0]?.emailAddress || '',  // Clerk email (ensure correct casing)
+      first_name: user.firstName || '',  // Clerk first name
+      last_name: user.lastName || '',    // Clerk last name
+      profile_image_url: user.imageUrl || user.imageUrl || '', // Profile image URL from Clerk
+    };
+
+    // Find the user in the database by userId
+    let stats = await UserStats.findOne({ user_id: userId });
+
+    // If user stats do not exist, create a new document with the user data
+    if (!stats) {
+      stats = await UserStats.create({
+        ...updatedUserData,
+        bets_placed: 0,
+        bets_won: 0,
+        bets_lost: 0,
+        total_betted_amount: 0,
+        total_won: 0,
+        total_lost: 0,
+        greens_won: 0,
+        current_balance: 0,
+      });
+    } else {
+      // If stats exist, check if any fields have changed and update them
+      let updated = false;
+      for (const [key, value] of Object.entries(updatedUserData)) {
+        if (stats[key] !== value) {
+          stats[key] = value;
+          updated = true;
+        }
+      }
+
+      // If there are any updates, save the document
+      if (updated) {
+        await stats.save();
+      }
+    }
+
+    // Return the user stats (with updated data) as the response
+    return NextResponse.json(stats);
+  } catch (err) {
+    // Handle errors by logging them and returning an error response
+    console.error('Error in user-stats GET:', err);
+    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
+  }
+}
+
+
+//// 4th working and updating data with mongodb esesesess
+import { auth } from '@clerk/nextjs/server';
+import { connect } from '@/lib/mongo';
+import UserStats from '@lib/models/user.model';
+import { NextResponse } from 'next/server';
+import { clerkClient } from '@clerk/nextjs/server';
+
+export async function GET() {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await connect();
+
+    const user = await (await clerkClient()).users.getUser(userId);
+
+    if (!user) {
+      return NextResponse.json({ error: 'User data not found in Clerk' }, { status: 404 });
+    }
+
+    console.log("\n\nLogging user:");
+    console.log(user);
+
+    const updatedUserData = {
+      user_id: userId,
+      username: user.username || '',
+      email: user.emailAddresses?.[0]?.emailAddress || '',
+      first_name: user.firstName || '',
+      last_name: user.lastName || '',   
+      profile_image_url: user.imageUrl || '', 
+    };
+
+    let stats = await UserStats.findOne({ user_id: userId });
+
+    if (!stats) {
+      stats = await UserStats.create({
+        ...updatedUserData,
+        bets_placed: 0,
+        bets_won: 0,
+        bets_lost: 0,
+        total_betted_amount: 0,
+        total_won: 0,
+        total_lost: 0,
+        greens_won: 0,
+        current_balance: 0,
+      });
+      console.log("User stats created:", stats);
+    } else {
+      let updated = false;
+      console.log("Comparing user data with existing stats:");
+      for (const [key, value] of Object.entries(updatedUserData)) {
+        console.log(`Comparing ${key}: Stored = ${stats[key]}, Incoming = ${value}`);
+        if (stats[key] !== value) {
+          stats[key] = value;
+          updated = true;
+        }
+      }
+
+      if (updated) {
+        console.log("Data updated, saving...");
+        await stats.save();
+        console.log("Stats saved:", stats);
+      } else console.log("No changes detected, no update needed.")
+    }
+
+    return NextResponse.json(stats);
+  } catch (err) {
+    console.error('Error in user-stats GET:', err);
+    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
+  }
+}

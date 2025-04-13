@@ -1,8 +1,6 @@
   "use client";
-  import axios from "axios";
   import { motion, useAnimation } from "framer-motion";
   import { useState, useEffect, useRef } from "react";
-  
 
   const baseColors = [
     "green", "red", "black", "red", "black", "red", "black", "red", "black", 
@@ -60,32 +58,34 @@
     const [audioUnlocked, setAudioUnlocked] = useState(false);
 
     useEffect(() => {
-      const unlockAudio = () => {
-        if (!audioUnlocked) {
-          slotRollAudioRef.current = new Audio("./assets/mp3/slotroll.mp3");
-          slotLandAudioRef.current = new Audio("./assets/mp3/slotland.mp3");
-    
-          // Try playing muted to unlock audio policy
-          slotRollAudioRef.current.muted = true;
-          slotRollAudioRef.current.play().then(() => {
-            slotRollAudioRef.current!.muted = false;
+    const unlockAudio = () => {
+      if (!audioUnlocked) {
+        slotRollAudioRef.current = new Audio("./assets/mp3/slotroll.mp3");
+        slotLandAudioRef.current = new Audio("./assets/mp3/slotland.mp3");
+
+        slotRollAudioRef.current.muted = true;
+        slotRollAudioRef.current.play().then(() => {
+          setTimeout(() => {
+            if (slotRollAudioRef.current) {
+              slotRollAudioRef.current.muted = false;
+            }
             setAudioUnlocked(true);
-          }).catch(() => {
-            // If it fails, still mark as unlocked so we don't retry forever
-            setAudioUnlocked(true);
-          });
-    
-          window.removeEventListener("click", unlockAudio);
-        }
-      };
-    
-      window.addEventListener("click", unlockAudio);
-    
-      return () => {
+          }, 2000);
+        }).catch(() => {
+          setAudioUnlocked(true);
+        });
+
         window.removeEventListener("click", unlockAudio);
-      };
+      }
+    };
+
+    window.addEventListener("click", unlockAudio);
+
+    return () => {
+      window.removeEventListener("click", unlockAudio);
+    };
     }, [audioUnlocked]);
-    
+
     useEffect(() => {
       const initialIndex = safeLoopZone + centerSlot;
       setLogicalIndex(initialIndex);
@@ -178,7 +178,6 @@
       };
 
       setPoints(newPoints);
-
       setRedBet(0);
       setGreenBet(0);
       setBlackBet(0);
@@ -205,7 +204,6 @@
       if (color === "black") setBlackBet(prev => prev + betAmount);
     };
     
-
     return (
       <main className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
         <div className="w-[880px] overflow-hidden border-2 border-gray-300 rounded-xl">
@@ -257,7 +255,7 @@
         <div className="flex items-center justify-center m-12 text-xl font-semibold ">
 
           <p className="text-red-300 text-2xl px-15 py-11 rounded m-5 text-center border border-gray-300">
-            Points: {points < 0 ? 0 : points}
+            Balance: {points !== null ? points : "0"}
           </p>
 
           <div 
@@ -355,3 +353,7 @@
       </main>
     );
   }
+
+
+
+  
