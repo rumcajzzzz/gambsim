@@ -11,14 +11,14 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
   if (isProtectedRoute(req)) {
 
     const { userId } = await auth();
-    if (userId !== ADMIN_USER_ID) {
-      return NextResponse.json(
-        { error: 'Forbidden: Only the admin can access this route.' },
-        { status: 403 }
-      );
-    }
+    // if (userId !== ADMIN_USER_ID) {
+    //   return NextResponse.json(
+    //     { error: 'Forbidden: Only the admin can access this route.' },
+    //     { status: 403 }
+    //   );
+    // }
   }
-});
+}); 
 
 export const config = {
   matcher: [

@@ -42,7 +42,7 @@
     const [logicalIndex, setLogicalIndex] = useState(0);
     
     const [rolledSlot, setRolledSlot] = useState<number | null>(null);
-    const [points, setPoints] = useState(0);
+    const [points, setPoints] = useState(1000);
     const [betAmount, setBetAmount] = useState(0);
     const [betColor, setBetColor] = useState<string | null>(null);
     const [rollHistory, setRollHistory] = useState<number[]>([]);
@@ -51,7 +51,7 @@
     const [greenBet, setGreenBet] = useState(0);
     const [blackBet, setBlackBet] = useState(0);
 
-    const [showRefuel, setShowRefuel] = useState(false); 
+    const [showRefuel, setShowRefuel] = useState(false);
 
     const slotRollAudioRef = useRef<HTMLAudioElement | null>(null);
     const slotLandAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -173,7 +173,9 @@
         setRedBet(0);
         setGreenBet(0);
         setBlackBet(0);
-
+        if (points === 0) {
+          setShowRefuel(true);
+        }
       }, 500);
       if (betColor !== null) {
         handleBetResult(rolledSlotIndex);
@@ -190,15 +192,13 @@
       } else if (baseColors[rolledSlotIndex] === "black" && blackBet > 0) {
         newPoints += blackBet * 2;
       } else {
-        newPoints -= redBet + greenBet + blackBet;
+        return newPoints;
       }
 
       newPoints = Math.max(newPoints, 0);
-    
       setPoints(newPoints);  
 
       try {
-        // Big IF to check if user placed any bet
         if (redBet > 0 || greenBet > 0 || blackBet > 0) {
           const res = await fetch('/api/user-stats', {
             method: 'POST',
@@ -218,10 +218,7 @@
       } catch (err) {
         console.error('Error updating balance in DB:', err);
       }
-      if(newPoints == 0 ) {
-        setShowRefuel(true);
-      }
-      
+
     };
 
     const updateBalance = async (bet: number) => {
@@ -250,6 +247,7 @@
     };
     
     const refuel = async () => {
+    
       const newBalance = 1000;
       setPoints(newBalance);
       setShowRefuel(false);
@@ -271,6 +269,7 @@
         console.error('Error refueling:', err);
       }
     };
+    
     
     const placeBet = (color: string) => {
       if (betAmount <= 0 || betAmount > points) return; 
@@ -388,6 +387,7 @@
             Red
           </button>
           <button
+            disabled={!canBet}
             onClick={() => placeBet("green")}
             className={`bg-green-600 text-white px-6 py-2 rounded-xl border-2 ${
               betColor === "green" ? "border-yellow-500" : "border-transparent"
@@ -396,6 +396,7 @@
             Green
           </button>
           <button
+            disabled={!canBet}
             onClick={() => placeBet("black")}
             className={`bg-black text-white px-6 py-2 rounded-xl border-2 ${
               betColor === "black" ? "border-yellow-500" : "border-transparent"
