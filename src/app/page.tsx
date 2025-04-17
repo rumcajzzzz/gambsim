@@ -3,20 +3,9 @@
 import { motion, useAnimation } from "framer-motion";
 import { useEffect } from "react";
 
-import { placeBet  } from "@/utils/updateBalanceANDplaceBet";
-import { roll } from "@/utils/handleBetResultANDroll";
-import { refuel } from "@/utils/refuel";
-import { useGameLogic } from "@/utils/gameLogic";
-import {
-  baseColors,
-  baseNumbers,
-  slotWidth,
-  centerSlot,
-  safeLoopZone,
-  buildSlotArray
-} from "@/utils/slotConfig";
+import { useGameLogic, useSlotAudio, safeLoopZone, centerSlot, buildSlotArray, roll, baseColors, baseNumbers, placeBet, slotWidth, refuel } from "@/utils/gameLogic";
 import { useUserBalance } from "@/utils/backend/fetchUserBalance";
-import { useSlotAudio } from "@/utils/audioLogic";
+
 
 
 export default function Home() {
