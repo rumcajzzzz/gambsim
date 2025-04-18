@@ -16,12 +16,9 @@ import {
   buildSlotArray
 } from "@/utils/slotConfig";
 import { useUserBalance } from "@/utils/backend/fetchUserBalance";
-import { useSlotAudio } from "@/utils/audioLogic";
 
 
 export default function Home() {
-
-  const { playSound } = useSlotAudio();
 
   const {
     points, setPoints,
@@ -42,7 +39,14 @@ export default function Home() {
   const slots = buildSlotArray();
   const controls = useAnimation();
 
-  useUserBalance();
+  let initialBalanceCondition = true;
+  const initialBalanceValue = useUserBalance();
+  useEffect(() => {
+    if (initialBalanceCondition && initialBalanceValue != null) {
+      setPoints(initialBalanceValue);
+      initialBalanceCondition = false;
+    }
+  }, [initialBalanceValue]);
 
   useEffect(() => {
       const initialIndex = safeLoopZone + centerSlot;
@@ -88,7 +92,6 @@ export default function Home() {
               setShowRefuel,
               timeRoundLength,
               betBlockTime,
-              playSound
             )
           }
 

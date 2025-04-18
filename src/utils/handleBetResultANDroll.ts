@@ -1,3 +1,5 @@
+import { audio } from "./audioLogic";
+
 export const handleBetResult = async (
 	rolledSlotIndex: number,
 	points: number,
@@ -73,11 +75,11 @@ export const roll = async (
 	setShowRefuel: (b: boolean) => void,
 	timeRoundLength: number,
 	betBlockTime: number,
-	playSound: (type: "roll" | "land") => void
   ) => {
 	setIsRolling(true);
 	setBetAmount(0);
-  
+	audio("slotroll").play();
+
 	if (betColor !== null) {
 	  setPoints(points);
 	}
@@ -98,7 +100,7 @@ export const roll = async (
 	controls.set({ x: -(newSafeIndex - centerSlot) * slotWidth });
 	setLogicalIndex(newSafeIndex);
   
-	playSound("land");
+
   
 	setRollHistory((prev) => {
 	  const newHistory = [rolledSlotIndex, ...prev];
@@ -112,7 +114,7 @@ export const roll = async (
 	  setGreenBet(0);
 	  setBlackBet(0);
 	}, 500);
-  
+  	audio("slotland").play();
 	handleBetResult(
 	  rolledSlotIndex,
 	  points,
