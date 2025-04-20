@@ -63,7 +63,7 @@ export const useGameLogic = () => {
 };
 
 export const audio = (filename: string) => {
-	const sound = new Audio(`./assets/mp3/${filename}.mp3`);
+	const sound = new Audio(`@audio/${filename}.mp3`);
 	sound.currentTime = 0;
 	return sound;
 };
