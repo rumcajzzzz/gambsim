@@ -2,7 +2,6 @@
 
 import { motion, useAnimation } from "framer-motion";
 import { useEffect } from "react";
-import axios from "axios";
 
 import { 
   baseColors, baseNumbers, slotWidth,
@@ -12,44 +11,32 @@ import {
   }  from "@/utils/gameLogic";
 import { useUserBalance } from "@/utils/backend/fetchUserBalance";
 import { postGameState } from "@/utils/gameLogic";
+import { useGameStateSync } from "@/utils/useGameStateSync";
 
 export default function Home() {
 
-
-
-  
-  // useEffect(() => {
-  //   const pollInterval = setInterval(() => {
-  //     const fetchLatestData = async () => {
-  //       try {
-
-  //       } catch (error) {
-  //         console.error("Error polling data:", error);
-  //       }
-  //     };
-  
-  //     fetchLatestData();
-  //   }, 5000);
-  
-  //   return () => clearInterval(pollInterval);
-  // }, []);
 
   const {
     points, setPoints,
     betAmount, setBetAmount,
     betColor, setBetColor,
-    rollHistory, setRollHistory,
+    // rollHistory, 
+    setRollHistory,
     redBet, setRedBet,
     greenBet, setGreenBet,
     blackBet, setBlackBet,
     showRefuel, setShowRefuel,
     timeRoundLength, betBlockTime,
-    timeLeft, setTimeLeft,
+    // timeLeft, 
+    setTimeLeft,
     canBet, setCanBet,
-    isRolling, setIsRolling,
+    // isRolling, 
+    setIsRolling,
     logicalIndex, setLogicalIndex,
     setRolledSlot
   } = useGameLogic();
+
+  const { isRolling, timeLeft, rollHistory } = useGameStateSync();
 
   const slots = buildSlotArray();
   const controls = useAnimation();

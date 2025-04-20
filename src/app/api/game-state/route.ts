@@ -1,6 +1,7 @@
 import { connect } from '@/lib/mongo';
 import GameState from '@/lib/models/gamestate.model';
 import { NextRequest, NextResponse } from 'next/server';
+import { startGameLoop } from '@/lib/gameLoop';
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,9 +28,16 @@ export async function POST(req: NextRequest) {
   }
 }
 
+let gameLoopStarted = false;
+
 export async function GET() {
   try {
     await connect();
+    if (!gameLoopStarted) {
+      startGameLoop();
+      gameLoopStarted = true;
+    }
+
     const gameState = await GameState.findOne().sort({ timestamp: -1 });
     return NextResponse.json(gameState || {});
   } catch (err) {
