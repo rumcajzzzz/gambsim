@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-export const useUserBalance = () => {
+export const  useUserBalance = () => {
   const [fetchPoints, setPoints] = useState<number>(0);
 
   useEffect(() => {

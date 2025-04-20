@@ -250,6 +250,27 @@ export const updateBalance = async (
     }
 };
 
+export const postGameState = async (isRolling: boolean, timeLeft: number, rollHistory: number[]) => {
+    try {
+      const res = await fetch('/api/game-state', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ isRolling, timeLeft, rollHistory }),
+      });
+
+      if (!res.ok) {
+        console.error('Failed to update game state in DB');
+      } else {
+        const updatedState = await res.json();
+        console.log('Game state updated in DB:', updatedState);
+      }
+    } catch (err) {
+      console.error('Error updating game state:', err);
+    }
+};
+
 export const placeBet = (
     color: string,
     betAmount: number,
@@ -269,3 +290,4 @@ export const placeBet = (
     if (color === "green") setGreenBet(prev => prev + betAmount);
     if (color === "black") setBlackBet(prev => prev + betAmount);
 };
+

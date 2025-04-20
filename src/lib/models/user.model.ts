@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 
 const UserStatsSchema = new Schema({
   user_id: { type: String, required: true, unique: true },
@@ -15,7 +15,7 @@ const UserStatsSchema = new Schema({
   total_lost: { type: Number, default: 0 },
   greens_won: { type: Number, default: 0 },
   current_balance: { type: Number, default: 0 },
-}, { timestamps: true });
+});
 
 const UserStats = mongoose.models.UserStats || mongoose.model('UserStats', UserStatsSchema);
 

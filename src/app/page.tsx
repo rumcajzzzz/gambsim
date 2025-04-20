@@ -2,6 +2,7 @@
 
 import { motion, useAnimation } from "framer-motion";
 import { useEffect } from "react";
+import axios from "axios";
 
 import { 
   baseColors, baseNumbers, slotWidth,
@@ -10,9 +11,28 @@ import {
   useGameLogic, roll, refuel, placeBet 
   }  from "@/utils/gameLogic";
 import { useUserBalance } from "@/utils/backend/fetchUserBalance";
-
+import { postGameState } from "@/utils/gameLogic";
 
 export default function Home() {
+
+
+
+  
+  // useEffect(() => {
+  //   const pollInterval = setInterval(() => {
+  //     const fetchLatestData = async () => {
+  //       try {
+
+  //       } catch (error) {
+  //         console.error("Error polling data:", error);
+  //       }
+  //     };
+  
+  //     fetchLatestData();
+  //   }, 5000);
+  
+  //   return () => clearInterval(pollInterval);
+  // }, []);
 
   const {
     points, setPoints,
@@ -30,6 +50,7 @@ export default function Home() {
     logicalIndex, setLogicalIndex,
     setRolledSlot
   } = useGameLogic();
+
   const slots = buildSlotArray();
   const controls = useAnimation();
 
@@ -42,10 +63,12 @@ export default function Home() {
     }
   }, [initialBalanceValue]);
 
+
   useEffect(() => {
       const initialIndex = safeLoopZone + centerSlot;
       setLogicalIndex(initialIndex);
   }, []);
+
 
   useEffect(() => {
       if (isRolling || timeLeft <= 0) return;
@@ -53,10 +76,9 @@ export default function Home() {
       const interval = setInterval(() => {
         setTimeLeft((prev) => {
           const next = prev - 1;
-
+          postGameState(isRolling, timeLeft, rollHistory);
           if (next <= betBlockTime) setCanBet(false);
           else setCanBet(true);
-
           if (next <= 0) {
             clearInterval(interval);
             setCanBet(false);
@@ -87,6 +109,7 @@ export default function Home() {
               timeRoundLength,
               betBlockTime,
             )
+
           }
 
           return next;
@@ -95,6 +118,11 @@ export default function Home() {
 
         return () => clearInterval(interval);
   }, [timeLeft, isRolling]);
+
+
+
+
+
 
   return (
       <main className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
