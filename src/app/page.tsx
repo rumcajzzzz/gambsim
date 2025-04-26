@@ -10,8 +10,6 @@ import {
   useGameLogic, roll, refuel, placeBet 
   }  from "@/utils/gameLogic";
 import { useUserBalance } from "@/utils/backend/fetchUserBalance";
-import { postGameState } from "@/utils/gameLogic";
-import { useGameStateSync } from "@/utils/useGameStateSync";
 
 export default function Home() {
 
@@ -20,23 +18,21 @@ export default function Home() {
     points, setPoints,
     betAmount, setBetAmount,
     betColor, setBetColor,
-    // rollHistory, 
+    rollHistory, 
     setRollHistory,
     redBet, setRedBet,
     greenBet, setGreenBet,
     blackBet, setBlackBet,
     showRefuel, setShowRefuel,
     timeRoundLength, betBlockTime,
-    // timeLeft, 
+    timeLeft, 
     setTimeLeft,
     canBet, setCanBet,
-    // isRolling, 
+    isRolling, 
     setIsRolling,
     logicalIndex, setLogicalIndex,
     setRolledSlot
   } = useGameLogic();
-
-  const { isRolling, timeLeft, rollHistory } = useGameStateSync();
 
   const slots = buildSlotArray();
   const controls = useAnimation();
@@ -63,7 +59,6 @@ export default function Home() {
       const interval = setInterval(() => {
         setTimeLeft((prev) => {
           const next = prev - 1;
-          postGameState(isRolling, timeLeft, rollHistory);
           if (next <= betBlockTime) setCanBet(false);
           else setCanBet(true);
           if (next <= 0) {
