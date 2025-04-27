@@ -60,7 +60,7 @@ export async function GET() {
         // console.log("Data updated, saving...");
         await stats.save();
         // console.log("Stats saved:", stats);
-      } else console.log("No changes detected, no update needed.")
+      }  // } else console.log("No changes detected, no update needed.")
     }
 
     return NextResponse.json(stats);

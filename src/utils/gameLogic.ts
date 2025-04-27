@@ -1,281 +1,178 @@
 import { useState } from "react";
-import { Dispatch, SetStateAction } from 'react';
+import { AnimationControls } from "framer-motion";
 
+// Constants
 export const baseColors = [
-	"green", "red", "black", "red", "black", "red", "black", "red", "black", 
-	"red", "black", "red", "black", "red", "black"
-  ];
-  
+  "green", "red", "black", "red", "black", "red", "black", "red", "black", 
+  "red", "black", "red", "black", "red", "black"
+];
+
 export const baseNumbers = Array.from({ length: 15 }, (_, i) => i);
-  
 export const slotWidth = 80;
 export const visibleSlots = 11;
 export const centerSlot = Math.floor(visibleSlots / 2);
 export const repeatCount = 15;
 export const safeLoopZone = baseNumbers.length * 2;
-  
+export const timeRoundLength = 6;
+export const betBlockTime = 1;
+
+// Helper functions
 export const buildSlotArray = () => {
-	const result: number[] = [];
-	for (let i = 0; i < repeatCount; i++) {
-	  result.push(...baseNumbers);
-	}
-	return result;
-};
-
-export const useGameLogic = () => {
-  const [points, setPoints] = useState(0);
-  const [betAmount, setBetAmount] = useState(0);
-  const [betColor, setBetColor] = useState<string | null>(null);
-  const [rollHistory, setRollHistory] = useState<number[]>([]);
-
-  const [redBet, setRedBet] = useState(0);
-  const [greenBet, setGreenBet] = useState(0);
-  const [blackBet, setBlackBet] = useState(0);
-
-  const [showRefuel, setShowRefuel] = useState(false);
-
-  const timeRoundLength = 6; // Round length (seconds) !IMPORTANT
-  const betBlockTime = 1; // Bet block time (seconds) !IMPORTANT
-
-  const [timeLeft, setTimeLeft] = useState(timeRoundLength); 
-  const [canBet, setCanBet] = useState(true);
-  const [isRolling, setIsRolling] = useState(false);
-  const [logicalIndex, setLogicalIndex] = useState(0);
-  const [, setRolledSlot] = useState<number | null>(null);
-
-  return {
-    points, setPoints,
-    betAmount, setBetAmount,
-    betColor, setBetColor,
-    rollHistory, setRollHistory,
-    redBet, setRedBet,
-    greenBet, setGreenBet,
-    blackBet, setBlackBet,
-    showRefuel, setShowRefuel,
-    timeRoundLength, betBlockTime,
-    timeLeft, setTimeLeft,
-    canBet, setCanBet,
-    isRolling, setIsRolling,
-    logicalIndex, setLogicalIndex,
-    setRolledSlot
-  };
+  const result: number[] = [];
+  for (let i = 0; i < repeatCount; i++) {
+    result.push(...baseNumbers);
+  }
+  return result;
 };
 
 export const audio = (filename: string) => {
-	const sound = new Audio(`/assets/mp3/${filename}.mp3`);
-	sound.currentTime = 0;
-	return {
-	  play: () => sound.play().catch(console.error),
-	  pause: () => sound.pause(),
-	  sound // raw audio element
-	};
-};
-  
-
-export const handleBetResult = async (
-	rolledSlotIndex: number,
-	points: number,
-	setPoints: (points: number) => void,
-	greenBet: number,
-	redBet: number,
-	blackBet: number,
-	baseColors: string[],
-	setShowRefuel: (show: boolean) => void
-  ) => {
-	let newPoints = points;
-  
-	if (baseColors[rolledSlotIndex] === "green" && greenBet > 0) {
-	  newPoints += greenBet * 14;
-	} else if (baseColors[rolledSlotIndex] === "red" && redBet > 0) {
-	  newPoints += redBet * 2;
-	} else if (baseColors[rolledSlotIndex] === "black" && blackBet > 0) {
-	  newPoints += blackBet * 2;
-	} else {
-	  if (newPoints === 0) setShowRefuel(true);
-	  return newPoints;
-	}
-  
-	if (newPoints === 0) setShowRefuel(true);
-	newPoints = Math.max(newPoints, 0);
-	setPoints(newPoints);
-  
-	try {
-	  if (redBet > 0 || greenBet > 0 || blackBet > 0) {
-		const res = await fetch("/api/user-stats", {
-		  method: "POST",
-		  headers: { "Content-Type": "application/json" },
-		  body: JSON.stringify({ amountChange: newPoints - points }),
-		});
-  
-		if (!res.ok) {
-		  console.error("Failed to update balance in DB");
-		} else {
-		  const updatedStats = await res.json();
-		  console.log("Balance updated in DB:", updatedStats);
-		}
-	  } else {
-		console.log("No bet was placed. Skipping DB update.");
-	  }
-	} catch (err) {
-	  console.error("Error updating balance in DB:", err);
-	}
+  const sound = new Audio(`/assets/mp3/${filename}.mp3`);
+  sound.currentTime = 0;
+  return {
+    play: () => sound.play().catch(console.error),
+    pause: () => sound.pause(),
+    sound
+  };
 };
 
-export const roll = async (
-	betColor: string | null,
-	points: number,
-	setPoints: (pts: number) => void,
-	setIsRolling: (v: boolean) => void,
-	setBetAmount: (val: number) => void,
-	logicalIndex: number,
-	baseNumbers: number[],
-	centerSlot: number,
-	slotWidth: number,
-	controls: any,
-	setRolledSlot: (i: number) => void,
-	setLogicalIndex: (i: number) => void,
-	safeLoopZone: number,
-	setRollHistory: (historyFn: (prev: number[]) => number[]) => void,
-	setTimeLeft: (t: number) => void,
-	setRedBet: (v: number) => void,
-	setGreenBet: (v: number) => void,
-	setBlackBet: (v: number) => void,
-	greenBet: number,
-	redBet: number,
-	blackBet: number,
-	baseColors: string[],
-	setShowRefuel: (b: boolean) => void,
-	timeRoundLength: number,
-  ) => {
-	setIsRolling(true);
-	setBetAmount(0);
-	
-	let tempboolroll = true;
-	let tempboolland = true;
-	if(tempboolroll) { tempboolroll=false; audio("slotroll").play();};
+// Main game logic hook
+export const useGameLogic = () => {
+  // State
+  const [points, setPoints] = useState(1000);
+  const [betAmount, setBetAmount] = useState(0);
+  const [betColor, setBetColor] = useState<string | null>(null);
+  const [rollHistory, setRollHistory] = useState<number[]>([]);
+  const [redBet, setRedBet] = useState(0);
+  const [greenBet, setGreenBet] = useState(0);
+  const [blackBet, setBlackBet] = useState(0);
+  const [showRefuel, setShowRefuel] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(timeRoundLength);
+  const [canBet, setCanBet] = useState(true);
+  const [isRolling, setIsRolling] = useState(false);
+  const [logicalIndex, setLogicalIndex] = useState(0);
+  const [rolledSlot, setRolledSlot] = useState<number | null>(null);
 
-	if (betColor !== null) {
-	  setPoints(points);
-	}
-  
-	const loops = 6;
-	const extraSteps = Math.floor(Math.random() * baseNumbers.length);
-	const newIndex = logicalIndex + loops * baseNumbers.length + extraSteps;
-  
-	const rolledSlotIndex = newIndex % baseNumbers.length;
-	setRolledSlot(rolledSlotIndex);
-  
-	await controls.start({
-	  x: -(newIndex - centerSlot) * slotWidth,
-	  transition: { duration: 8, ease: [0.05, 0.9999, 0.999999999, 1] },
-	});
-  
-	const newSafeIndex = safeLoopZone + (newIndex % baseNumbers.length);
-	controls.set({ x: -(newSafeIndex - centerSlot) * slotWidth });
-	setLogicalIndex(newSafeIndex);
-  
-
-  
-	setRollHistory((prev) => {
-	  const newHistory = [rolledSlotIndex, ...prev];
-	  return newHistory.slice(0, 10);
-	});
-  
-	setTimeout(() => {
-	  setTimeLeft(timeRoundLength);
-	  setIsRolling(false);
-	  setRedBet(0);
-	  setGreenBet(0);
-	  setBlackBet(0);
-	}, 500);
-	if(tempboolland) {tempboolland=false; audio("slotland").play()};
-	handleBetResult(
-	  rolledSlotIndex,
-	  points,
-	  setPoints,
-	  greenBet,
-	  redBet,
-	  blackBet,
-	  baseColors,
-	  setShowRefuel
-	);
-	tempboolroll = true;
-	tempboolland = true;
-};
-
-export const refuel = async (
-	setPoints: React.Dispatch<React.SetStateAction<number>>, 
-	setShowRefuel: React.Dispatch<React.SetStateAction<boolean>>
-  ) => {
-	const newBalance = 1000;
-	setPoints(newBalance);
-	setShowRefuel(false);
-  
-	try {
-	  const res = await fetch('/api/user-stats', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ setBalance: newBalance }),
-	  });
-  
-	  if (!res.ok) {
-		console.error('Failed to refuel on server');
-	  } else {
-		const updatedStats = await res.json();
-		// console.log('Balance refueled in DB:', updatedStats);
-	  }
-	} catch (err) {
-	  console.error('Error refueling:', err);
-	}
-};
-
-export const updateBalance = async (
-    bet: number,
-    points: number,
-    setPoints: React.Dispatch<React.SetStateAction<number>>
-    ) => {
-    if (bet > points || bet <= 0) return;
-    
-    setPoints(prevPoints => prevPoints - bet);
-    
+  // API call handler
+  const updateBalance = async (amountChange: number, setBalance?: number) => {
     try {
       const res = await fetch('/api/user-stats', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ amountChange: -bet }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(setBalance !== undefined 
+          ? { setBalance }
+          : { amountChange }
+        ),
       });
-    
-      if (!res.ok) {
-      console.error('Failed to update balance in DB');
-      } else {
-      const updatedStats = await res.json();
-    //   console.log('Balance updated in DB:', updatedStats);
-      }
+
+      if (!res.ok) throw new Error('Failed to update balance');
+      return await res.json();
     } catch (err) {
-      console.error('Error updating balance:', err);
+      console.error('API Error:', err);
+      return null;
     }
-};
+  };
 
-export const placeBet = (
-    color: string,
-    betAmount: number,
-    points: number,
-    setPoints: Dispatch<SetStateAction<number>>, 
-    setBetColor: (color: string) => void,
-    setRedBet: (fn: (prev: number) => number) => void,
-    setGreenBet: (fn: (prev: number) => number) => void,
-    setBlackBet: (fn: (prev: number) => number) => void,
-  ) => {
-    if (betAmount <= 0 || betAmount > points) return;
-  
-    updateBalance(betAmount, points, setPoints);
+  // Game actions
+  const handleBetResult = async (rolledSlotIndex: number) => {
+    let newPoints = points;
+    const color = baseColors[rolledSlotIndex];
+
+    if (color === "green" && greenBet > 0) {
+      newPoints += greenBet * 14;
+    } else if (color === "red" && redBet > 0) {
+      newPoints += redBet * 2;
+    } else if (color === "black" && blackBet > 0) {
+      newPoints += blackBet * 2;
+    }
+
+    const finalPoints = Math.max(newPoints, 0);
+    setPoints(finalPoints);
+    setShowRefuel(finalPoints === 0);
+
+    if (redBet > 0 || greenBet > 0 || blackBet > 0) {
+      await updateBalance(finalPoints - points);
+    }
+  };
+
+  const roll = async (controls: AnimationControls) => {
+    setIsRolling(true);
+    setBetAmount(0);
+    // audio("slotroll").play();
+
+    const loops = 6;
+    const extraSteps = Math.floor(Math.random() * baseNumbers.length);
+    const newIndex = logicalIndex + loops * baseNumbers.length + extraSteps;
+    const rolledSlotIndex = newIndex % baseNumbers.length;
+
+    await controls.start({
+      x: -(newIndex - centerSlot) * slotWidth,
+      transition: { duration: 8, ease: [0.05, 0.9999, 0.999999999, 1] },
+    });
+
+    const newSafeIndex = safeLoopZone + (newIndex % baseNumbers.length);
+    controls.set({ x: -(newSafeIndex - centerSlot) * slotWidth });
+    
+    setLogicalIndex(newSafeIndex);
+    setRolledSlot(rolledSlotIndex);
+    setRollHistory(prev => [rolledSlotIndex, ...prev.slice(0, 9)]);
+
+    setTimeout(() => {
+      setTimeLeft(timeRoundLength);
+      setIsRolling(false);
+      setRedBet(0);
+      setGreenBet(0);
+      setBlackBet(0);
+    }, 500);
+
+    // audio("slotland").play();
+    handleBetResult(rolledSlotIndex);
+  };
+
+  const placeBet = (color: string, amount: number) => {
+    if (amount <= 0 || amount > points) return;
+
+    setPoints(p => p - amount);
     setBetColor(color);
-  
-    if (color === "red") setRedBet(prev => prev + betAmount);
-    if (color === "green") setGreenBet(prev => prev + betAmount);
-    if (color === "black") setBlackBet(prev => prev + betAmount);
-	
-};
+    
+    switch (color) {
+      case "red": setRedBet(p => p + amount); break;
+      case "green": setGreenBet(p => p + amount); break;
+      case "black": setBlackBet(p => p + amount); break;
+    }
 
+    updateBalance(-amount);
+  };
+
+  const refuel = async () => {
+    const newBalance = 1000;
+    setPoints(newBalance);
+    setShowRefuel(false);
+    await updateBalance(0, newBalance);
+  };
+
+  return {
+    // State
+    points,
+    betAmount,
+    betColor,
+    rollHistory,
+    redBet,
+    greenBet,
+    blackBet,
+    showRefuel,
+    timeLeft,
+    canBet,
+    isRolling,
+
+    // Setters
+    setPoints,
+    setBetAmount,
+    setTimeLeft,
+    setCanBet,
+    
+    // Actions
+    roll,
+    placeBet,
+    refuel
+  };
+};
