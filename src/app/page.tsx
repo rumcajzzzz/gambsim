@@ -1,18 +1,16 @@
 "use client";
 
 import { motion, useAnimation } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { 
   baseColors, baseNumbers, slotWidth,
   centerSlot, safeLoopZone, buildSlotArray, 
-  
-  useGameLogic, roll, refuel, placeBet 
+  useGameLogic, roll, refuel, placeBet, 
   }  from "@/utils/gameLogic";
 import { useUserBalance } from "@/utils/backend/fetchUserBalance";
 
 export default function Home() {
-
 
   const {
     points, setPoints,
@@ -89,7 +87,6 @@ export default function Home() {
               baseColors,
               setShowRefuel,
               timeRoundLength,
-              betBlockTime,
             )
 
           }
@@ -259,4 +256,4 @@ export default function Home() {
       </main>
   );
 
-  }
+}

@@ -22,7 +22,6 @@ export const buildSlotArray = () => {
 	return result;
 };
 
-
 export const useGameLogic = () => {
   const [points, setPoints] = useState(0);
   const [betAmount, setBetAmount] = useState(0);
@@ -63,10 +62,15 @@ export const useGameLogic = () => {
 };
 
 export const audio = (filename: string) => {
-	const sound = new Audio(`@audio/${filename}.mp3`);
+	const sound = new Audio(`/assets/mp3/${filename}.mp3`);
 	sound.currentTime = 0;
-	return sound;
+	return {
+	  play: () => sound.play().catch(console.error),
+	  pause: () => sound.pause(),
+	  sound // raw audio element
+	};
 };
+  
 
 export const handleBetResult = async (
 	rolledSlotIndex: number,
@@ -142,11 +146,13 @@ export const roll = async (
 	baseColors: string[],
 	setShowRefuel: (b: boolean) => void,
 	timeRoundLength: number,
-	betBlockTime: number,
   ) => {
 	setIsRolling(true);
 	setBetAmount(0);
-	audio("slotroll").play();
+	
+	let tempboolroll = true;
+	let tempboolland = true;
+	if(tempboolroll) { tempboolroll=false; audio("slotroll").play();};
 
 	if (betColor !== null) {
 	  setPoints(points);
@@ -182,7 +188,7 @@ export const roll = async (
 	  setGreenBet(0);
 	  setBlackBet(0);
 	}, 500);
-  	audio("slotland").play();
+	if(tempboolland) {tempboolland=false; audio("slotland").play()};
 	handleBetResult(
 	  rolledSlotIndex,
 	  points,
@@ -193,6 +199,8 @@ export const roll = async (
 	  baseColors,
 	  setShowRefuel
 	);
+	tempboolroll = true;
+	tempboolland = true;
 };
 
 export const refuel = async (
@@ -214,7 +222,7 @@ export const refuel = async (
 		console.error('Failed to refuel on server');
 	  } else {
 		const updatedStats = await res.json();
-		console.log('Balance refueled in DB:', updatedStats);
+		// console.log('Balance refueled in DB:', updatedStats);
 	  }
 	} catch (err) {
 	  console.error('Error refueling:', err);
@@ -243,7 +251,7 @@ export const updateBalance = async (
       console.error('Failed to update balance in DB');
       } else {
       const updatedStats = await res.json();
-      console.log('Balance updated in DB:', updatedStats);
+    //   console.log('Balance updated in DB:', updatedStats);
       }
     } catch (err) {
       console.error('Error updating balance:', err);
@@ -258,7 +266,7 @@ export const placeBet = (
     setBetColor: (color: string) => void,
     setRedBet: (fn: (prev: number) => number) => void,
     setGreenBet: (fn: (prev: number) => number) => void,
-    setBlackBet: (fn: (prev: number) => number) => void
+    setBlackBet: (fn: (prev: number) => number) => void,
   ) => {
     if (betAmount <= 0 || betAmount > points) return;
   
@@ -268,5 +276,6 @@ export const placeBet = (
     if (color === "red") setRedBet(prev => prev + betAmount);
     if (color === "green") setGreenBet(prev => prev + betAmount);
     if (color === "black") setBlackBet(prev => prev + betAmount);
+	
 };
 
