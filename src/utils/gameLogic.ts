@@ -52,7 +52,6 @@ export const useGameLogic = () => {
   const [logicalIndex, setLogicalIndex] = useState(0);
   const [rolledSlot, setRolledSlot] = useState<number | null>(null);
 
-  // API call handler
   const updateBalance = async (amountChange: number, setBalance?: number) => {
     try {
       const res = await fetch('/api/user-stats', {
@@ -103,7 +102,7 @@ export const useGameLogic = () => {
     const extraSteps = Math.floor(Math.random() * baseNumbers.length);
     const newIndex = logicalIndex + loops * baseNumbers.length + extraSteps;
     const rolledSlotIndex = newIndex % baseNumbers.length;
-
+    
     await controls.start({
       x: -(newIndex - centerSlot) * slotWidth,
       transition: { duration: 8, ease: [0.05, 0.9999, 0.999999999, 1] },

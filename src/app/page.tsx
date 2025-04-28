@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useAnimation } from "framer-motion";
-import { useEffect } from "react";
+import { SetStateAction, useEffect, useState } from "react";
 import { 
   baseColors, slotWidth,
   centerSlot, safeLoopZone, buildSlotArray, 
@@ -9,6 +9,8 @@ import {
   betBlockTime
 } from "@/utils/gameLogic";
 import { useUserBalance } from "@/utils/backend/fetchUserBalance";
+import { SocketClient } from "@/components/socket-client";
+
 
 export default function Home() {
   
@@ -83,11 +85,11 @@ export default function Home() {
 
 return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
+      <SocketClient />
       <div className="w-[880px] overflow-hidden border-2 border-gray-300 rounded-xl">
         <div className="mt-4 text-2xl font-bold text-center mb-5">
           {isRolling ? "Rolling..." : `Next roll in: ${timeLeft}s`}
         </div>
-
         <motion.div className="flex w-max" animate={controls}>
           {slots.map((num, i) => {
             const color = baseColors[num % 15];
