@@ -1,47 +1,186 @@
 "use client";
 
-import { SetStateAction, useEffect, useState } from "react";
-import io from "socket.io-client";
+import { useUser } from "@clerk/nextjs";
+import { useEffect, useState } from "react";
+import io, { Socket } from "socket.io-client";
+import "../styles/socketclient.css";
+
 
 export const SocketClient = () => {
-  const [socket, setSocket] = useState(Boolean);
+  
+  interface UserBets {
+    points: number;
+    redBet: number;
+    greenBet: number;
+    blackBet: number;
+    showRefuel: boolean;
+  }
+  const [localUser, setLocalUser] = useState<UserBets | null>(null);
+  const [balance, setBalance] = useState(0);
+  const [roll, setRoll] = useState<number | null>(null);
+  const [betAmount, setBetAmount] = useState(10);
+  const [socket, setSocket] = useState<typeof Socket | null>(null);
   const [connected, setConnected] = useState(false);
-  const [rolledSlot, setRolledSlot] = useState<number | null>(null);
+  const [phase, setPhase] = useState<"waiting" | "rolling" | "result">("waiting");
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [rollHistory, setRollHistory] = useState<number[]>([]);
+  const [currentBets, setCurrentBets] = useState({
+    red: 0,
+    green: 0,
+    black: 0,
+  });
+
+  const { user } = useUser();
 
   useEffect(() => {
-    console.log("Trying to connect...");
-    const socketInstance = io("http://localhost:3000/");
-
+    const socketInstance = io("http://localhost:3001/");
+    
     socketInstance.on("connect", () => {
-      setSocket(socketInstance.connected);
       setConnected(true);
       console.log("Connected to the socket");
+      if (user?.id) socketInstance.emit("userClerkId", user.id);
+    });
+    setSocket(socketInstance);
+
+    socketInstance.emit("userClerkData", {
+       userId: user?.id,
+       username: user?.username,
+       email: user?.emailAddresses?.[0]?.emailAddress,
+       first_name: user?.firstName,
+       last_name: user?.lastName,
+       profile_image_url: user?.imageUrl,
     });
 
-    socketInstance.on("startRoll", (data: { rolledSlotIndex: SetStateAction<number | null>; }) => {
-      console.log("Received roll from server:", data.rolledSlotIndex);
-      setRolledSlot(data.rolledSlotIndex);
-
+    socketInstance.on("initialState", (data: any) => {
+      setBalance(data.points);
+      setRollHistory(data.rollHistory);
+      setPhase(data.status);
+      setCountdown(data.timeLeft);
+      setCurrentBets(data.globalBets);
     });
 
-    socketInstance.on("disconnect", () => {
-      setConnected(false);
-      console.log("Disconnected from the socket");
+    socketInstance.on("betsUpdated", (bets: { red: number; green: number; black: number }) => {
+      setCurrentBets(bets);
+    });
+
+    socketInstance.on("balanceUpdated", (newBalance: number) => {
+      setBalance(newBalance);
+    });
+
+    socketInstance.on("newRoll", (roll: number) => {
+      setRoll(roll);
+      setRollHistory((prev) => [roll, ...prev].slice(0, 10));
+    });
+
+    socketInstance.on("status", (status: "waiting" | "rolling") => {
+      setPhase(status);
+
+      if (status === "waiting") {
+        setCurrentBets({ red: 0, green: 0, black: 0 }); 
+        setCountdown(10);
+      }
+      else if (status === "rolling") {
+        setCountdown(null);
+        }
+    });
+
+    socketInstance.on("showRefuel", (show: boolean) => {
+      setLocalUser((prev) => prev ? { ...prev, showRefuel: show } : null);
+    });
+
+    socketInstance.on("userBets", (user: UserBets) => {
+      setLocalUser(user);
     });
 
     return () => {
       socketInstance.disconnect();
-      console.log("Disconnected from the socket");
     };
-  }, []);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (phase === "waiting" && countdown !== null && countdown > 0) {
+      const interval = setInterval(() => {
+        setCountdown((prev) => (prev !== null ? prev - 1 : null));
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [countdown, phase]);
+  
+
+  const placeBet = (color: "red" | "green" | "black") => {
+    if (phase !== "waiting" || betAmount <= 0 || betAmount > balance) return;
+    socket?.emit("placeBet", { color, amount: betAmount,  username: user?.username || user?.firstName || "Anonymous",
+      avatar: user?.imageUrl || null, });
+  };
+
+  const handleRefuel = () => {
+    socket?.emit("refuel");
+  };
 
   return (
-    <div>
-      {connected ? (
-        <div>Connected! {rolledSlot !== null && <div>Rolling to: {rolledSlot}</div>}</div>
-      ) : (
-        <div>Connecting...</div>
-      )}
+    <div className="socket-client-container">
+      <div className="status-bar">
+        {connected ? (
+          <div className="status connected">Connected</div>
+        ) : (
+          <div className="status connecting">Connecting...</div>
+        )}
+      </div>
+
+      <div className="game-info">
+        <h2>Balance: ${balance}</h2>
+        <h3>Last Roll: {rollHistory[0]}</h3>
+      </div>
+
+      <div className="phase-info">
+        <h4>Game Status:</h4>
+        {phase === "waiting" && countdown !== null ? (
+          <p>Place your bets! Starting in: {countdown} seconds</p>
+        ) : phase === "rolling" ? (
+          <p>Rolling...</p>
+        ) : (
+          <p>Result shown!</p>
+        )}
+      </div>
+
+      <div className="roll-history">
+        <h4>Last 10 Rolls: </h4>
+        <ul className="flex mx-50">
+          {rollHistory.map((num, idx) => (
+            <li key={idx}>{num}</li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="bet-columns">
+          {[...Object.entries(currentBets)]
+            .map(([color, amount]) => (
+              <div key={color} className={`bet-column ${color}`}>
+                <h4 className="user-bet">
+                  You: $
+                  {localUser ? localUser[`${color}Bet` as keyof typeof localUser] : 0}
+                </h4>
+
+                <button
+                  onClick={() => placeBet(color as "red" | "green" | "black")}
+                  disabled={phase !== "waiting"}
+                  className={`${color}-button`}
+                >
+                  Bet {color.charAt(0).toUpperCase() + color.slice(1)}
+                </button>
+
+                <p className="global-bet">Total: ${amount}</p>
+              </div>
+            ))}
+        </div>
+
+      <div className="refuel-section">
+        {localUser?.showRefuel && (
+          <button className="refuel-btn" onClick={handleRefuel}>
+            Refuel Balance
+          </button>
+        )}
+      </div>
     </div>
   );
 };

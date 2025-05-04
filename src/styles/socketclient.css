@@ -1,0 +1,136 @@
+.socket-client-container {
+	font-family: Arial, sans-serif;
+	text-align: center;
+	padding: 20px;
+	background-color: #f0f0f0;
+	color: #333;
+  }
+  
+  .status-bar {
+	margin-bottom: 20px;
+  }
+  
+  .status {
+	font-size: 18px;
+	font-weight: bold;
+  }
+  
+  .status.connected {
+	color: green;
+  }
+  
+  .status.connecting {
+	color: orange;
+  }
+  
+  .game-info {
+	background-color: #e0e0e0;
+	padding: 15px;
+	border-radius: 8px;
+	margin-bottom: 20px;
+  }
+  
+  .phase-info, .betting-section, .refuel-section {
+	margin-top: 20px;
+  }
+  
+  input[type="number"] {
+	padding: 8px;
+	font-size: 16px;
+	width: 80px;
+	margin-right: 10px;
+  }
+  
+  button {
+	padding: 8px 20px;
+	font-size: 16px;
+	cursor: pointer;
+	background-color: #4CAF50;
+	color: white;
+	border: none;
+	border-radius: 4px;
+	transition: all 0.3s ease;
+  }
+  
+  button:disabled {
+	background-color: #ccc;
+	cursor: not-allowed;
+  }
+  
+  button:hover:not(:disabled) {
+	transform: translateY(-5px);
+  }
+  
+  .roll-history {
+	background-color: #fff;
+	padding: 15px;
+	border-radius: 8px;
+	margin-top: 20px;
+  }
+  
+  .roll-history ul {
+	list-style: none;
+	padding: 0;
+  }
+  
+  .roll-history li {
+	font-size: 16px;
+	margin: 15px 15px;
+  }
+  
+
+  .bet-input * {
+	margin: 0 15px;
+  }
+  .bet-input input {
+	background-color: #cdcdcd;
+	border-radius: 5px;
+  }
+
+  .bet-columns {
+	display: flex;
+	justify-content: space-around;
+	margin: 20px 0;
+	text-align: center;
+  }
+  
+  .bet-column {
+	flex: 1;
+	padding: 10px;
+  }
+  
+  .bet-column h4.user-bet {
+	margin-bottom: 10px;
+	font-weight: bold;
+  }
+  
+  .bet-column .global-bet {
+	margin-top: 10px;
+	font-size: 0.9em;
+	color: #888;
+  }
+  
+  .red-button {
+	background-color: #e74c3c;
+	color: white;
+	padding: 10px;
+	border: none;
+	border-radius: 8px;
+  }
+  
+  .green-button {
+	background-color: #2ecc71;
+	color: white;
+	padding: 10px;
+	border: none;
+	border-radius: 8px;
+  }
+  
+  .black-button {
+	background-color: #2c3e50;
+	color: white;
+	padding: 10px;
+	border: none;
+	border-radius: 8px;
+  }
+  
