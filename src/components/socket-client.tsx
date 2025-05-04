@@ -24,6 +24,7 @@ export const SocketClient = () => {
   const [phase, setPhase] = useState<"waiting" | "rolling" | "result">("waiting");
   const [countdown, setCountdown] = useState<number | null>(null);
   const [rollHistory, setRollHistory] = useState<number[]>([]);
+  const [showRefuel, setShowRefuel] = useState<boolean | null>(null);
   const [currentBets, setCurrentBets] = useState({
     red: 0,
     green: 0,
@@ -37,7 +38,6 @@ export const SocketClient = () => {
     
     socketInstance.on("connect", () => {
       setConnected(true);
-      console.log("Connected to the socket");
       if (user?.id) socketInstance.emit("userClerkId", user.id);
     });
     setSocket(socketInstance);
@@ -67,9 +67,9 @@ export const SocketClient = () => {
       setBalance(newBalance);
     });
 
-    socketInstance.on("newRoll", (roll: number) => {
-      setRoll(roll);
-      setRollHistory((prev) => [roll, ...prev].slice(0, 10));
+    socketInstance.on("newRoll", (roll: number[]) => {
+      setRoll(roll[0]);
+      setRollHistory(roll);
     });
 
     socketInstance.on("status", (status: "waiting" | "rolling") => {
@@ -84,13 +84,13 @@ export const SocketClient = () => {
         }
     });
 
-    socketInstance.on("showRefuel", (show: boolean) => {
-      setLocalUser((prev) => prev ? { ...prev, showRefuel: show } : null);
-    });
-
     socketInstance.on("userBets", (user: UserBets) => {
       setLocalUser(user);
     });
+
+    socketInstance.on("showRefuel", (show: boolean) => {
+      setShowRefuel(show);
+    })
 
     return () => {
       socketInstance.disconnect();
@@ -106,7 +106,6 @@ export const SocketClient = () => {
     }
   }, [countdown, phase]);
   
-
   const placeBet = (color: "red" | "green" | "black") => {
     if (phase !== "waiting" || betAmount <= 0 || betAmount > balance) return;
     socket?.emit("placeBet", { color, amount: betAmount,  username: user?.username || user?.firstName || "Anonymous",
@@ -114,7 +113,7 @@ export const SocketClient = () => {
   };
 
   const handleRefuel = () => {
-    socket?.emit("refuel");
+    socket?.emit("refuel", false);
   };
 
   return (
@@ -127,15 +126,10 @@ export const SocketClient = () => {
         )}
       </div>
 
-      <div className="game-info">
-        <h2>Balance: ${balance}</h2>
-        <h3>Last Roll: {rollHistory[0]}</h3>
-      </div>
-
-      <div className="phase-info">
-        <h4>Game Status:</h4>
+      <div className="phase-info my-4">
+        {/* <h4>Game Status:</h4> */}
         {phase === "waiting" && countdown !== null ? (
-          <p>Place your bets! Starting in: {countdown} seconds</p>
+          <p>Rolling in: {countdown}s</p>
         ) : phase === "rolling" ? (
           <p>Rolling...</p>
         ) : (
@@ -143,10 +137,17 @@ export const SocketClient = () => {
         )}
       </div>
 
+      <div className="game-info">
+        <h2>Balance: {balance}</h2>
+        {/* <h3>Last Roll: {rollHistory[0]}</h3> */}
+      </div>
+
+      
+
       <div className="roll-history">
         <h4>Last 10 Rolls: </h4>
         <ul className="flex mx-50">
-          {rollHistory.map((num, idx) => (
+          {Array.isArray(rollHistory) && rollHistory.map((num, idx) => (
             <li key={idx}>{num}</li>
           ))}
         </ul>
@@ -156,11 +157,6 @@ export const SocketClient = () => {
           {[...Object.entries(currentBets)]
             .map(([color, amount]) => (
               <div key={color} className={`bet-column ${color}`}>
-                <h4 className="user-bet">
-                  You: $
-                  {localUser ? localUser[`${color}Bet` as keyof typeof localUser] : 0}
-                </h4>
-
                 <button
                   onClick={() => placeBet(color as "red" | "green" | "black")}
                   disabled={phase !== "waiting"}
@@ -168,14 +164,16 @@ export const SocketClient = () => {
                 >
                   Bet {color.charAt(0).toUpperCase() + color.slice(1)}
                 </button>
-
-                <p className="global-bet">Total: ${amount}</p>
+                <h4 className="user-bet my-2">
+                  {localUser ? localUser[`${color}Bet` as keyof typeof localUser] : 0}
+                </h4>
+                <p className="global-bet">TOTAL: {amount}</p>
               </div>
             ))}
         </div>
 
       <div className="refuel-section">
-        {localUser?.showRefuel && (
+        {(showRefuel && phase === "waiting") && (
           <button className="refuel-btn" onClick={handleRefuel}>
             Refuel Balance
           </button>
