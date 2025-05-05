@@ -106,6 +106,7 @@
   
   .bet-column .global-bet {
 	margin-top: 10px;
+	margin-bottom: 25px;
 	font-size: 0.9em;
 	color: #888;
   }
@@ -134,3 +135,12 @@
 	border-radius: 8px;
   }
   
+  .bet-list {
+	min-height: 800px;
+  }
+  
+  .bet-item {
+	margin: 15px 0;
+	display: flex;
+	justify-content: space-evenly;
+  }
