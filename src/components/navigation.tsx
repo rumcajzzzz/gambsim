@@ -1,13 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import "../styles/navigation.css"; 
+import "@styles/navigation.css"; 
 
 export const Navigation = () => {
   const pathName = usePathname();
 
   const links = [
     { href: "/", text: "Home"},
+    { href: "/leaderboard", text: "Leaderboard"},
     { href: "/about", text: "About"},
     { href: "/contact", text: "Contact"},
   ];

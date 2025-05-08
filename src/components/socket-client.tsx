@@ -17,7 +17,8 @@ export const SocketClient = () => {
   const [localUser, setLocalUser] = useState<UserBets | null>(null);
   const [balance, setBalance] = useState(0);
   const [roll, setRoll] = useState<number | null>(null);
-  const [betAmount, setBetAmount] = useState(10);
+  const [refreshing, setRefreshing] = useState(false);
+  const [betAmount, setBetAmount] = useState(0);
   const [socket, setSocket] = useState<typeof Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const [phase, setPhase] = useState<"waiting" | "rolling" | "result">("waiting");
@@ -140,7 +141,9 @@ export const SocketClient = () => {
   
   const placeBet = (color: "red" | "green" | "black") => {
     if (phase !== "waiting" || betAmount <= 0 || betAmount > balance) return;
+  
     setBets({ red: [], green: [], black: [] });
+  
     socket?.emit("placeBet", {
       color,
       amount: betAmount,
@@ -149,20 +152,20 @@ export const SocketClient = () => {
     });
   };
 
+  const handleRefresh = () => {
+    if (socket && !refreshing) {
+      setRefreshing(true);
+      socket.emit("getBalance");
+      setTimeout(() => setRefreshing(false), 1000);
+    }
+  };
+  
   const handleRefuel = () => {
     socket?.emit("refuel", false);
   };
 
   return (
     <div className="socket-client-container">
-
-      {/* <div className="status-bar">
-        {connected ? (
-          <div className="status connected">Connected</div>
-        ) : (
-          <div className="status connecting">Connecting...</div>
-        )}
-      </div> */}
 
       <div className="phase-info my-4">
         {phase === "waiting" && countdown !== null ? (
@@ -197,19 +200,36 @@ export const SocketClient = () => {
       </div>
 
       <div className="game-info">
-        <h2>Balance: {balance}</h2>
+        <div className="balance-display">
+          <h2>Balance: </h2>
+          <h2>{refreshing && "..." || balance}</h2>
+          <button className="balance-refresh-button" onClick={handleRefresh} disabled={refreshing}>
+            {refreshing ? <span className="animate-spin">↻</span> : "↻"}
+          </button>
+        </div>
+        <div className="betinput-buttons">
+          <input type="number" placeholder="Enter bet amount..." className="bet-input" value={betAmount || ""} onChange={(e) => setBetAmount(Number(e.target.value))} min={0} />
+          <button onClick={() => setBetAmount(0)}>Clear</button>
+          <button onClick={() => setBetAmount((prev) => prev + 10)}>+10</button>
+          <button onClick={() => setBetAmount((prev) => prev + 100)}>+100</button>
+          <button onClick={() => setBetAmount((prev) => prev + 1000)}>+1000</button>
+          <button onClick={() => setBetAmount((prev) => Math.floor(prev / 2))}>1/2</button>
+          <button onClick={() => setBetAmount((prev) => prev * 2)}>2X</button>
+          <button onClick={() => setBetAmount(balance)}>Max</button>
+        </div>
       </div>
-
+          
       <div className="bet-columns">
           {[...Object.entries(currentBets)].map(([color, amount]) => (
             <div key={color} className={`bet-column ${color}`}>
               <button
-                onClick={() => placeBet(color as "red" | "green" | "black")}
-                disabled={phase !== "waiting"}
-                className={`${color}-button`}
-              >
-                Bet {color.charAt(0).toUpperCase() + color.slice(1)}
+                  onClick={() => placeBet(color as "red" | "green" | "black")}
+                  disabled={phase !== "waiting"}
+                  className={`${color}-button`}
+                >
+                  Bet {color.charAt(0).toUpperCase() + color.slice(1)}
               </button>
+
               <h4 className="user-bet my-2">
                 {localUser ? localUser[`${color}Bet` as keyof typeof localUser] : 0}
               </h4>
@@ -226,7 +246,7 @@ export const SocketClient = () => {
               </div>
             </div>
           ))}
-        </div>
+      </div>
 
       <div className="refuel-section">
         {(showRefuel && phase === "waiting") && (
