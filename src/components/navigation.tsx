@@ -7,10 +7,10 @@ export const Navigation = () => {
   const pathName = usePathname();
 
   const links = [
-    { href: "/", text: "Home"},
-    { href: "/leaderboard", text: "Leaderboard"},
-    { href: "/about", text: "About"},
-    { href: "/contact", text: "Contact"},
+    { href: "/", text: "Home", icon: "/homeicon.svg"},
+    { href: "/leaderboard", text: "Leaderboard", icon: "/leaderboardicon.svg"},
+    { href: "/about", text: "About", icon: "/abouticon.svg"},
+    { href: "/contact", text: "Contact", icon: "/contacticon.svg"},
   ];
 
   return (
@@ -22,8 +22,8 @@ export const Navigation = () => {
             key={link.href}
             href={link.href}
             className={`link ${isActive ? "link--active" : "link--inactive"}`}
-          >
-            {link.text}
+          > 
+            {link.icon && <img src={link.icon} alt={link.text} className="w-10 h-10"/>}
           </Link>
         );
       })}

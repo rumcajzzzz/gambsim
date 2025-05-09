@@ -141,10 +141,8 @@ export const SocketClient = () => {
   
   const placeBet = (color: "red" | "green" | "black") => {
     if (phase !== "waiting" || betAmount <= 0 || betAmount > balance) return;
-  
-    setBets({ red: [], green: [], black: [] });
-  
-    socket?.emit("placeBet", {
+
+    socket?.emit("placeBet", {  
       color,
       amount: betAmount,
       username: user?.username || user?.firstName || "Anonymous",
@@ -233,7 +231,16 @@ export const SocketClient = () => {
               <h4 className="user-bet my-2">
                 {localUser ? localUser[`${color}Bet` as keyof typeof localUser] : 0}
               </h4>
-              <p className="global-bet">TOTAL: {amount}</p>
+              <div className="global-bet-info flex items-center justify-between px-8 py-2">
+                 <div className="flex items-center space-x-4">
+                  <img className="w-10 h-10" src="/user.svg" alt="Users icon" />
+                  <p className="text-white">{bets[color as "red" | "green" | "black"].length}</p>
+                 </div>
+                  <p className="text-gray-500">
+                    Total bet: <span className="text-white">{amount}</span>
+                  </p>
+              </div>
+
 
               {/* Render list of users' bets for each color */}
               <div className="bet-list">

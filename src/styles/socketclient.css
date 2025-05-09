@@ -8,11 +8,23 @@
 	--color-black: #0f0f0f;      
 	--text-active-color: #ff3838;
 	--text-inactive-color: #858585;
+	--color-white: #ffffff;   
+	--color-accent: #e53935; 
+	--color-muted: #aaa;      
+	--color-shadow: rgba(0, 0, 0, 0.1);   
+	--color-border: rgba(229, 57, 53, 0.3); 
+	--color-hover-shadow: rgba(229, 57, 53, 0.4);
+	--radius: 8px;
+	--section-gap: 2rem;
   }
   
 body {
 	box-sizing: border-box;
 	color: white;
+	overflow-y: auto;
+	overflow-x: hidden;
+	scroll-behavior: smooth;
+	
 }
 
 .socket-client-container {
@@ -20,6 +32,7 @@ body {
 	text-align: center;
 	padding: 20px;
 	background-color: var(--color-bg-dark);
+	animation: fadeIn 1.5s ease-out;
   }
   
   .status-bar {
@@ -57,8 +70,8 @@ body {
 	justify-content: space-between;
 	min-width: 200px;
 	background-color: var(--color-bg-medium);
-	border: 3px solid var(--color-bg-dark);
-	border-radius: 5px;
+	border: 5px solid var(--color-bg-dark);
+	border-radius: 15px;
 	padding: 25px 15px;
   }
   .balance-refresh-button {
@@ -129,49 +142,55 @@ body {
   
   .bet-column {
 	flex: 1;
-	padding: 10px;
-  }
+    display: flex;
+    flex-direction: column;
+	}
+  .user-bet, .global-bet-info, .bet-list {
+	background-color: var(--color-bg-medium);
+	border-radius: 8px;
+	padding: 15px;
+	margin: 15px;
+	
+  }	
   
   .bet-column h4.user-bet {
-	margin-bottom: 10px;
 	font-weight: bold;
   }
-  .global-bet {
-	color: var(--color-bg-light)
-  }
-  .bet-column .global-bet {
-	margin-top: 10px;
-	margin-bottom: 25px;
-	font-size: 0.9em;
-  }
   
+  .red-button, .green-button, .black-button {
+	width: 150px;
+	padding: 10px;
+	margin: 0 auto;
+	border: none;
+	border-radius: 8px;	
+  }
   .red-button {
 	background-color: var(--color-red);
-	padding: 10px;
-	border: none;
-	border-radius: 8px;
   }
-  
   .green-button {
 	background-color: var(--color-green);
-	padding: 10px;
-	border: none;
-	border-radius: 8px;
   }
-  
   .black-button {
 	background-color: var(--color-black);
-	padding: 10px;
-	border: none;
-	border-radius: 8px;
   }
   
   .bet-list {
-	min-height: 800px;
+	min-height: 400px;
   }
   
   .bet-item {
 	margin: 15px 0;
 	display: flex;
 	justify-content: space-evenly;
+  }
+
+  @keyframes fadeIn {
+	from {
+	  opacity: 0;
+	  transform: translateY(15px);
+	}
+	to {
+	  opacity: 1;
+	  transform: translateY(0);
+	}
   }

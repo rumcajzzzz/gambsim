@@ -16,7 +16,7 @@ const Header = () => {
 
   return (
     <header
-      className={`flex mx-10 my-15 font-bold justify-between items-center p-4 gap-4 h-16 headdy`}
+      className={`flex font-bold justify-between items-center p-4 gap-4 h-16 headdy`}
     > 
           <div className='flex items-center'>
             <div>
@@ -25,13 +25,15 @@ const Header = () => {
 
             <Navigation />
 
-            <SignedOut>
-              <SignInButton />
-              <SignUpButton />
-            </SignedOut>
+              
+
           </div>
 
           <div className='flex items-center mx-20'>
+            <SignedOut>
+                <SignInButton />
+                <SignUpButton />
+              </SignedOut>    
             <SignedIn>
               <div>
                 <span className="mx-10">{user?.username || user?.firstName || ''}</span>
