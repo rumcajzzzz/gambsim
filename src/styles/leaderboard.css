@@ -79,6 +79,7 @@ body {
   
   .leaderboard-item.top-1 {
 	background-color: rgb(211, 197, 77);
+	font-size: 2rem;
   }
   .leaderboard-item.top-1 .leaderboard-avatar {
 	border-color: rgb(158, 163, 78);
@@ -86,12 +87,14 @@ body {
   
   .leaderboard-item.top-2 {
 	background-color: rgb(145, 145, 143);
+	font-size: 1.5rem;
   }
   .leaderboard-item.top-2 .leaderboard-avatar {
 	border-color: rgb(226, 224, 224);
   }
 
   .leaderboard-item.top-3 {
+	font-size: 1.2rem;
 	background-color: rgb(126, 100, 91);
   }
   .leaderboard-item.top-3 .leaderboard-avatar {

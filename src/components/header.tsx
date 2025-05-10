@@ -20,7 +20,7 @@ const Header = () => {
     > 
           <div className='flex items-center'>
             <div>
-              <img src="/rmzclogo.svg" alt="Logo" className="w-40 h-40 logo-img"/>
+              <img src="/rmzclogo.svg" alt="Logo" className="w-30 h-30 logo-img"/>
             </div>
 
             <Navigation />

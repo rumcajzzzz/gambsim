@@ -23,7 +23,7 @@ export const Navigation = () => {
             href={link.href}
             className={`link ${isActive ? "link--active" : "link--inactive"}`}
           > 
-            {link.icon && <img src={link.icon} alt={link.text} className="w-10 h-10"/>}
+            {link.icon && <img src={link.icon} alt={link.text} className="w-6 h-6"/>}
           </Link>
         );
       })}

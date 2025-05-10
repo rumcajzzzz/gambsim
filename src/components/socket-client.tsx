@@ -22,6 +22,7 @@ export const SocketClient = () => {
   const [socket, setSocket] = useState<typeof Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const [phase, setPhase] = useState<"waiting" | "rolling" | "result">("waiting");
+  const [winningColor, setWinningColor] = useState<string>('');
   const [countdown, setCountdown] = useState<number | null>(null);
   const [rollHistory, setRollHistory] = useState<number[]>([]);
   const [showRefuel, setShowRefuel] = useState<boolean | null>(null);
@@ -39,12 +40,27 @@ export const SocketClient = () => {
   const { user } = useUser();
 
   useEffect(() => {
+    if (connected && user?.id) {
+      socket?.emit("userClerkId", user.id);
+      socket?.emit("userClerkData", {
+        userId: user.id,
+        username: user.username,
+        email: user.emailAddresses?.[0]?.emailAddress,
+        first_name: user.firstName,
+        last_name: user.lastName,
+        profile_image_url: user.imageUrl,
+      });
+    }
+  }, [connected, user, socket]);
+  
+  useEffect(() => {
     const socketInstance = io("http://localhost:3001/")
     
-    socketInstance.on("connect", () => {
-      setConnected(true);
-      if (user?.id) socketInstance.emit("userClerkId", user.id);
-    })
+    // In case of weird database behaviour/resolvingbets etc. uncomment this code and comment the useEffect up there!
+    // socketInstance.on("connect", () => {
+    //   setConnected(true);
+    //   if (user?.id) socketInstance.emit("userClerkId", user.id);
+    // })
 
     socketInstance.on("currentBetData", (data: any) => {
       setBets({
@@ -85,18 +101,29 @@ export const SocketClient = () => {
       setRoll(roll[0]);
       setBets({red: [], green: [], black: []})
       setRollHistory(roll);
+
+      // const result = roll[0];
+      // if (result === 0) {
+      //   console.log("Setting color");
+      //   setWinningColor("green");
+      // } else if (result % 2 === 1) {
+      //   setWinningColor("red");
+      // } else {
+      //   console.log("Setting color");
+      //   setWinningColor("black");
+      // }
     })
 
     socketInstance.on("status", (status: "waiting" | "rolling") => {
       setPhase(status);
-
       if (status === "waiting") {
-        setCurrentBets({ red: 0, green: 0, black: 0 }); 
+        setWinningColor("");
+        setCurrentBets({ red: 0, green: 0, black: 0 });
         setCountdown(10);
-      }
-      else if (status === "rolling") {
+      } else if (status === "rolling") {
         setCountdown(null);
-        }
+        
+      }
     })
 
     socketInstance.on("userBets", (user: UserBets) => {
@@ -165,7 +192,7 @@ export const SocketClient = () => {
   return (
     <div className="socket-client-container">
 
-      <div className="phase-info my-4">
+      <div className="phase-info my-2">
         {phase === "waiting" && countdown !== null ? (
           <p>Rolling in: {countdown}s</p>
         ) : phase === "rolling" ? (
@@ -176,7 +203,6 @@ export const SocketClient = () => {
       </div>
 
       <div className="roll-history">
-        <h4>Last 10 Rolls: </h4>
         <ul className="flex mx-50">
           {Array.isArray(rollHistory) &&
             rollHistory.map((num, idx) => {
@@ -207,19 +233,24 @@ export const SocketClient = () => {
         </div>
         <div className="betinput-buttons">
           <input type="number" placeholder="Enter bet amount..." className="bet-input" value={betAmount || ""} onChange={(e) => setBetAmount(Number(e.target.value))} min={0} />
-          <button onClick={() => setBetAmount(0)}>Clear</button>
+          <button onClick={() => setBetAmount(0)}>CLEAR</button>
           <button onClick={() => setBetAmount((prev) => prev + 10)}>+10</button>
           <button onClick={() => setBetAmount((prev) => prev + 100)}>+100</button>
           <button onClick={() => setBetAmount((prev) => prev + 1000)}>+1000</button>
           <button onClick={() => setBetAmount((prev) => Math.floor(prev / 2))}>1/2</button>
           <button onClick={() => setBetAmount((prev) => prev * 2)}>2X</button>
-          <button onClick={() => setBetAmount(balance)}>Max</button>
+          <button onClick={() => setBetAmount(balance)}>MAX</button>
         </div>
       </div>
           
       <div className="bet-columns">
           {[...Object.entries(currentBets)].map(([color, amount]) => (
-            <div key={color} className={`bet-column ${color}`}>
+            <div
+                key={color}
+                className={`bet-column ${color} ${
+                  phase === "result" && winningColor && winningColor !== color ? "bet-column-fade" : ""
+                }`}
+              >
               <button
                   onClick={() => placeBet(color as "red" | "green" | "black")}
                   disabled={phase !== "waiting"}
@@ -246,8 +277,11 @@ export const SocketClient = () => {
               <div className="bet-list">
                 {bets[color as "red" | "green" | "black"].map((bet, idx) => (
                   <div key={idx} className="bet-item">
-                    <img src={bet.profileImageUrl} alt={bet.username} width="30" height="30" />
-                    <span>{bet.username}</span> <span>{bet.amount}</span>
+                    <div className="flex">
+                      <img src={bet.profileImageUrl} alt={bet.username} className="w-10 h-10 rounded-3xl" />
+                      <span>{bet.username}</span>
+                    </div>
+                     <span className="bet-amount">{bet.amount}</span>
                   </div>
                 ))}
               </div>

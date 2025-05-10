@@ -1,7 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+Chettan+2:wght@400..800&family=Cardo:ital,wght@0,400;0,700;1,400&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Rubik:ital,wght@0,300..900;1,300..900&display=swap');
+
 :root {
 	--color-bg-dark: #1e1f24;     
 	--color-bg-medium: #2c2d33;   
-	--color-bg-light: #535353;   
+	--color-bg-light: #6d6b6b;   
 	--color-red: #e74c3c;         
 	--color-green: #2ecc71;       
 	--color-light: #f0f0f0;       
@@ -18,13 +20,14 @@
 	--section-gap: 2rem;
   }
   
-body {
+  body {
+	font-family: 'Poppins', sans-serif;
+	font-weight: 600; 
 	box-sizing: border-box;
 	color: white;
 	overflow-y: auto;
 	overflow-x: hidden;
 	scroll-behavior: smooth;
-	
 }
 
 .socket-client-container {
@@ -32,6 +35,7 @@ body {
 	text-align: center;
 	padding: 20px;
 	background-color: var(--color-bg-dark);
+	border-radius: 10px;
 	animation: fadeIn 1.5s ease-out;
   }
   
@@ -57,9 +61,9 @@ body {
 	align-items: stretch; 
 	justify-content: space-between;
 	background-color: var(--color-bg-medium);
-	margin: 25px 0;
-	padding: 35px;
-	border-radius: 8px;
+	margin: 15px 0;
+	padding: 15px 25px;
+	border-radius: 10px;
 	margin-bottom: 20px;
 	gap: 20px;
   }
@@ -86,7 +90,7 @@ body {
   
   button {
 	padding: 8px 20px;
-	font-size: 16px;
+	font-size: 0.8rem;
 	cursor: pointer;
 	border: none;
 	border-radius: 4px;
@@ -105,7 +109,7 @@ body {
   .roll-history {
 	background-color: var(--color-bg-medium);
 	padding: 15px;
-	border-radius: 8px;
+	border-radius: 10px;
 	margin-top: 20px;
   }
   
@@ -116,13 +120,27 @@ body {
   
   .roll-history li {
 	font-size: 16px;
-	margin: 15px 15px;
+	margin: 5px 15px;
   }
   
   .betinput-buttons {
 	background-color: var(--color-bg-dark);
 	padding: 25px 15px;
 	border-radius: 15px;
+  }
+  .betinput-buttons button {
+	border: 2px solid var(--color-bg-light);
+	border-radius: 15px;
+	margin: 0 4px;
+  }
+  .betinput-buttons button:nth-child(2) {
+	border-color:  var(--color-bg-medium);
+	color: var(--color-bg-light)
+  }
+  .betinput-buttons button:last-child {
+	border-color: var(--color-red);	
+	color: var(--color-red)
+
   }
   .bet-input {
 	margin: 0 15px;
@@ -144,12 +162,18 @@ body {
 	flex: 1;
     display: flex;
     flex-direction: column;
+	transition: opacity 0.5s ease;
 	}
+	.bet-column-fade {
+		opacity: 0.3;
+		transition: opacity 0.5s ease;
+	}
+
   .user-bet, .global-bet-info, .bet-list {
 	background-color: var(--color-bg-medium);
 	border-radius: 8px;
 	padding: 15px;
-	margin: 15px;
+	margin: 10px;
 	
   }	
   
@@ -160,7 +184,7 @@ body {
   .red-button, .green-button, .black-button {
 	width: 150px;
 	padding: 10px;
-	margin: 0 auto;
+	margin: 15px auto;
 	border: none;
 	border-radius: 8px;	
   }
@@ -179,11 +203,18 @@ body {
   }
   
   .bet-item {
-	margin: 15px 0;
+	margin: 15px;
 	display: flex;
-	justify-content: space-evenly;
+	justify-content: space-between;
   }
-
+  .bet-item span {
+	display: flex;
+	margin: 0 15px;
+	align-items: center;
+  }
+  .bet-amount {
+	color: var(--color-red)
+  }
   @keyframes fadeIn {
 	from {
 	  opacity: 0;
