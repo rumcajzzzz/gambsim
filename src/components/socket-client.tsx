@@ -340,7 +340,7 @@ export const SocketClient = () => {
                         <Link href={`/profile/${bet.username}`} target="_blank">
                           <div className="flex cursor-pointer items-center gap-2">
                             <img
-                              src={bet.profileImageUrl}
+                              src={user?.imageUrl}
                               alt={bet.username}
                               className="w-10 h-10 rounded-3xl"
                             />
