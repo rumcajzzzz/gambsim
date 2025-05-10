@@ -1,13 +1,18 @@
 "use client";
-
+import { motion, useAnimation } from 'framer-motion';
 import { useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import io, { Socket } from "socket.io-client";
 import "../styles/socketclient.css";
 import Link from "next/link";
+import { baseColors, baseNumbers, buildSlotArray, useSound } from '@/utils/gameLogic';
 
 export const SocketClient = () => {
-  
+  const controls = useAnimation();
+  const slots = buildSlotArray();
+  const playSpinSound = useSound('/assets/mp3/spin.mp3');
+  const playEndRoundSound = useSound('/assets/mp3/roundend.mp3');
+
   interface UserBets {
     points: number;
     redBet: number;
@@ -37,9 +42,11 @@ export const SocketClient = () => {
     green: [] as { username: string; amount: number; profile_image_url: string }[],
     black: [] as { username: string; amount: number; profile_image_url: string }[],
   });
-
   const { user } = useUser();
 
+  const slotWidth = 80; 
+  const centerSlot = 10;
+  const positionOffset = 5;
   useEffect(() => {
     if (connected && user?.id) {
       socket?.emit("userClerkId", user.id);
@@ -53,6 +60,10 @@ export const SocketClient = () => {
       });
     }
   }, [connected, user, socket]);
+
+  useEffect(() => {
+    controls.set({ x: -(centerSlot * slotWidth) }); 
+  }, []);
   
   useEffect(() => {
     const socketInstance = io("http://localhost:3001/")
@@ -91,6 +102,7 @@ export const SocketClient = () => {
     })
 
     socketInstance.on("betsUpdated", (bets: { red: number; green: number; black: number }) => {
+      
       setCurrentBets(bets);
     })
 
@@ -98,21 +110,27 @@ export const SocketClient = () => {
       setBalance(newBalance);
     })
 
-    socketInstance.on("newRoll", (roll: number[]) => {
+    socketInstance.on("newRoll", async (roll: number[]) => {
+      playSpinSound();
       setRoll(roll[0]);
-      setBets({red: [], green: [], black: []})
-      setRollHistory(roll);
 
-      // const result = roll[0];
-      // if (result === 0) {
-      //   console.log("Setting color");
-      //   setWinningColor("green");
-      // } else if (result % 2 === 1) {
-      //   setWinningColor("red");
-      // } else {
-      //   console.log("Setting color");
-      //   setWinningColor("black");
-      // }
+      const result = roll[0];
+      const loops = 6;
+      const newIndex = result + loops * baseNumbers.length + positionOffset;
+      const safeLoopZone = 2 * baseNumbers.length;
+      
+      await controls.start({
+        x: -(newIndex - centerSlot) * slotWidth,
+        transition: { duration: 8, ease: [0.05, 0.9999, 0.999999999, 1] },
+      });
+      
+      const newSafeIndex = safeLoopZone + (newIndex % baseNumbers.length);
+      controls.set({ x: -(newSafeIndex - centerSlot) * slotWidth });
+      playEndRoundSound();
+      setWinningColor(result === 0 ? 'green' : result % 2 === 1 ? 'red' : 'black');
+      setWinningColor(roll[0] === 0 ? 'green' : roll[0] % 2 === 1 ? 'red' : 'black');
+      setBets({red: [], green: [], black: []});
+      setRollHistory(roll);
     })
 
     socketInstance.on("status", (status: "waiting" | "rolling") => {
@@ -123,7 +141,6 @@ export const SocketClient = () => {
         setCountdown(10);
       } else if (status === "rolling") {
         setCountdown(null);
-        
       }
     })
 
@@ -191,9 +208,9 @@ export const SocketClient = () => {
   };
 
   return (
-
     <div className="container">
       <div className="socket-client-container">
+
         <div className="phase-info my-2">
           {phase === "waiting" && countdown !== null ? (
             <p>Rolling in: {countdown}s</p>
@@ -206,6 +223,32 @@ export const SocketClient = () => {
           )}
       
         </div>
+
+        <div className="flex justify-center align-center">
+          <div className="slotbar-container w-[880px] overflow-hidden rounded-xl shadow-2xl">
+            <motion.div 
+              className="flex w-max" 
+              animate={controls}
+              initial={{ x: 0 }}
+              >
+              {slots.map((num, i) => {
+                const color = baseColors[num % 15];
+                return (
+                  <div
+                    key={`${i}-${num}`}
+                    className={`w-20 h-20 flex items-center justify-center text-white font-bold text-xl ${
+                      color === "green" ? "bg-green-600" : 
+                      color === "red" ? "bg-red-600" : "bg-black"
+                    }`}
+                  >
+                    {num}
+                  </div>
+                );
+              })}
+            </motion.div>
+          </div>
+        </div>
+        
         <div className="roll-history">
           <ul className="flex mx-50">
             <p className="history-text">HISTORY</p>
@@ -233,13 +276,21 @@ export const SocketClient = () => {
             )}
           </ul>
         </div>
+
         <div className="game-info">
           <div className="balance-display">
-            <h2>Balance: </h2>
-            <h2>{refreshing && "..." || balance}</h2>
-            <button className="balance-refresh-button" onClick={handleRefresh} disabled={refreshing}>
-              {refreshing ? <span className="animate-spin">↻</span> : "↻"}
-            </button>
+          <h2>Balance: </h2>
+          <h2>{refreshing ? "..." : balance}</h2>
+            {showRefuel && phase === "waiting" ? (
+              <button className="refuel-button" onClick={handleRefuel}>
+                <img src="/refuelicon.svg" alt="refuel icon" className='w-10 h-10 aspect-1/1 invert' />
+              </button>
+            ) : (
+              
+              <button className="balance-refresh-button" onClick={handleRefresh} disabled={refreshing}>
+                {refreshing ? <span className="animate-spin">↻</span> : "↻"}
+              </button>
+            )}
           </div>
           <div className="betinput-buttons">
             <input type="number" placeholder="Enter bet amount..." className="bet-input" value={betAmount || ""} onChange={(e) => setBetAmount(Number(e.target.value))} min={0} />
@@ -303,15 +354,15 @@ export const SocketClient = () => {
               </div>
             ))}
         </div>
-        <div className="refuel-section">
+
+        {/* <div className="refuel-section">
           {(showRefuel && phase === "waiting") && (
             <button className="refuel-btn" onClick={handleRefuel}>
               Refuel Balance
             </button>
           )}
-        </div>
-      
-      
+        </div> */}
+
       </div>
     </div>
   );

@@ -17,16 +17,20 @@ const Header = () => {
 
   return (
     <header
-      className={`flex font-bold justify-between items-center p-4 gap-4 h-16 headdy`}
+      className={`flex font-bold justify-between items-center p-4 gap-4 h-16 headdy relative`}
     > 
+              <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-3xl text-center font-bold text-gray-400 z-0">
+                <span className="text-red-700">Gamb</span><span className="text-green-700">SIM</span>
+              </span>
+              <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm top-10 text-center font-bold text-gray-400 opacity-5 z-0">
+                ALPHA VERSION
+            </span>
           <div className='flex items-center'>
             <div>
               <img src="/rmzclogo.svg" alt="Logo" className="w-30 h-30 logo-img"/>
             </div>
 
             <Navigation />
-
-              
 
           </div>
 

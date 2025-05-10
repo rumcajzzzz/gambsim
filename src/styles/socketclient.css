@@ -76,7 +76,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	min-width: 200px;
+	min-width: 250px;
 	background-color: var(--color-bg-medium);
 	border: 5px solid var(--color-bg-dark);
 	border-radius: 15px;
@@ -98,9 +98,11 @@
 	cursor: pointer;
 	border: none;
 	border-radius: 4px;
-	transition: all 0.3s ease;
+	transition: all 0.5s ease;
   }
-  
+  .refuel-button {
+	padding: 0 5px !important;
+  }
   button:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
@@ -109,7 +111,34 @@
   button:hover:not(:disabled) {
 	transform: translateY(-5px);
   }
-  
+  .roll-green-tile {
+	background-color: var(--color-green);
+  }
+  .roll-red-tile {
+	background-color: var(--color-red);
+  }
+  .roll-black-tile {
+	background-color: var(--color-black);
+  }
+
+  .slotbar-container {
+	position: relative;
+  }
+  .slotbar-container::after {
+	content: '';
+	position: absolute;
+	left: 50%;
+	top: 0;
+	transform: translateX(-50%);
+	width: 0;
+	height: 0;
+	border-left: 10px solid transparent;
+	border-right: 10px solid transparent;
+	border-top: 20px solid rgb(255, 255, 255);
+	z-index: 100;
+  }
+
+
   .history-text {
 	display: flex;
 	align-items:flex-end;
@@ -138,6 +167,7 @@
 	aspect-ratio: 1/1;
 	transition: all 0.2s ease;
   }
+  
   .history-green-tile {
 	background-color: var(--color-green);
 	filter: drop-shadow(0 0 10px green);
