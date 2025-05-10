@@ -4,6 +4,7 @@ import { useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import io, { Socket } from "socket.io-client";
 import "../styles/socketclient.css";
+import Link from "next/link";
 
 export const SocketClient = () => {
   
@@ -21,7 +22,7 @@ export const SocketClient = () => {
   const [betAmount, setBetAmount] = useState(0);
   const [socket, setSocket] = useState<typeof Socket | null>(null);
   const [connected, setConnected] = useState(false);
-  const [phase, setPhase] = useState<"waiting" | "rolling" | "result">("waiting");
+  const [phase, setPhase] = useState<"waiting" | "rolling" | "result" | "suspended">("waiting");
   const [winningColor, setWinningColor] = useState<string>('');
   const [countdown, setCountdown] = useState<number | null>(null);
   const [rollHistory, setRollHistory] = useState<number[]>([]);
@@ -190,113 +191,128 @@ export const SocketClient = () => {
   };
 
   return (
-    <div className="socket-client-container">
 
-      <div className="phase-info my-2">
-        {phase === "waiting" && countdown !== null ? (
-          <p>Rolling in: {countdown}s</p>
-        ) : phase === "rolling" ? (
-          <p>Rolling...</p>
-        ) : (
-          <p>Result shown!</p>
-        )}
-      </div>
-
-      <div className="roll-history">
-        <ul className="flex mx-50">
-          {Array.isArray(rollHistory) &&
-            rollHistory.map((num, idx) => {
-              const getBgColor = (n: number) => {
-                if (n === 0) return 'bg-green-500';
-                if (n % 2 === 1) return 'bg-red-500';
-                return 'bg-black';
-              };
-              return (
-                <li
-                  key={idx}
-                  className={`text-white flex justify-center items-center w-12 h-12 px-4 py-2 rounded mx-1 ${getBgColor(num)}`}
-                >
-                  {num}
-                </li>
-              );
-            })}
-        </ul>
-      </div>
-
-      <div className="game-info">
-        <div className="balance-display">
-          <h2>Balance: </h2>
-          <h2>{refreshing && "..." || balance}</h2>
-          <button className="balance-refresh-button" onClick={handleRefresh} disabled={refreshing}>
-            {refreshing ? <span className="animate-spin">↻</span> : "↻"}
-          </button>
+    <div className="container">
+      <div className="socket-client-container">
+        <div className="phase-info my-2">
+          {phase === "waiting" && countdown !== null ? (
+            <p>Rolling in: {countdown}s</p>
+          ) : phase === "rolling" ? (
+            <p>Rolling...</p>
+          ) : phase === "suspended" ? (
+            <p>🛠️ The roulette system is temporarily closed for maintenance. 🛠️</p>
+          ) : (
+            <p>Result shown!</p>
+          )}
+      
         </div>
-        <div className="betinput-buttons">
-          <input type="number" placeholder="Enter bet amount..." className="bet-input" value={betAmount || ""} onChange={(e) => setBetAmount(Number(e.target.value))} min={0} />
-          <button onClick={() => setBetAmount(0)}>CLEAR</button>
-          <button onClick={() => setBetAmount((prev) => prev + 10)}>+10</button>
-          <button onClick={() => setBetAmount((prev) => prev + 100)}>+100</button>
-          <button onClick={() => setBetAmount((prev) => prev + 1000)}>+1000</button>
-          <button onClick={() => setBetAmount((prev) => Math.floor(prev / 2))}>1/2</button>
-          <button onClick={() => setBetAmount((prev) => prev * 2)}>2X</button>
-          <button onClick={() => setBetAmount(balance)}>MAX</button>
-        </div>
-      </div>
-          
-      <div className="bet-columns">
-          {[...Object.entries(currentBets)].map(([color, amount]) => (
-            <div
-                key={color}
-                className={`bet-column ${color} ${
-                  phase === "result" && winningColor && winningColor !== color ? "bet-column-fade" : ""
-                }`}
+        <div className="roll-history">
+          <ul className="flex mx-50">
+            <p className="history-text">HISTORY</p>
+            {Array.isArray(rollHistory) && rollHistory.length === 0 ? (
+              <li
+                className="history-tile loading-tile text-transparent flex justify-center items-center w-12 h-12 px-4 py-2 rounded mx-1"
               >
-              <button
-                  onClick={() => placeBet(color as "red" | "green" | "black")}
-                  disabled={phase !== "waiting"}
-                  className={`${color}-button`}
+              </li>
+            ) : (
+              rollHistory.map((num, idx) => {
+                const getBgColor = (n: number) => {
+                  if (n === 0) return 'history-green-tile';
+                  if (n % 2 === 1) return 'history-red-tile';
+                  return 'history-black-tile';
+                };
+                return (
+                  <li
+                    key={idx}
+                    className={`history-tile text-white flex justify-center items-center w-12 h-12 px-4 py-2 rounded mx-1  ${getBgColor(num)}`}
+                  >
+                    {num}
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
+        <div className="game-info">
+          <div className="balance-display">
+            <h2>Balance: </h2>
+            <h2>{refreshing && "..." || balance}</h2>
+            <button className="balance-refresh-button" onClick={handleRefresh} disabled={refreshing}>
+              {refreshing ? <span className="animate-spin">↻</span> : "↻"}
+            </button>
+          </div>
+          <div className="betinput-buttons">
+            <input type="number" placeholder="Enter bet amount..." className="bet-input" value={betAmount || ""} onChange={(e) => setBetAmount(Number(e.target.value))} min={0} />
+            <button onClick={() => setBetAmount(0)}>CLEAR</button>
+            <button onClick={() => setBetAmount((prev) => prev + 10)}>+10</button>
+            <button onClick={() => setBetAmount((prev) => prev + 100)}>+100</button>
+            <button onClick={() => setBetAmount((prev) => prev + 1000)}>+1000</button>
+            <button onClick={() => setBetAmount((prev) => Math.floor(prev / 2))}>1/2</button>
+            <button onClick={() => setBetAmount((prev) => prev * 2)}>2X</button>
+            <button onClick={() => setBetAmount(balance)}>MAX</button>
+          </div>
+        </div>
+      
+        <div className="bet-columns">
+            {[...Object.entries(currentBets)].map(([color, amount]) => (
+              <div
+                  key={color}
+                  className={`bet-column ${color} ${
+                    phase === "result" && winningColor && winningColor !== color ? "bet-column-fade" : ""
+                  }`}
                 >
-                  Bet {color.charAt(0).toUpperCase() + color.slice(1)}
-              </button>
-
-              <h4 className="user-bet my-2">
-                {localUser ? localUser[`${color}Bet` as keyof typeof localUser] : 0}
-              </h4>
-              <div className="global-bet-info flex items-center justify-between px-8 py-2">
-                 <div className="flex items-center space-x-4">
-                  <img className="w-10 h-10" src="/user.svg" alt="Users icon" />
-                  <p className="text-white">{bets[color as "red" | "green" | "black"].length}</p>
-                 </div>
-                  <p className="text-gray-500">
-                    Total bet: <span className="text-white">{amount}</span>
-                  </p>
+                <button
+                    onClick={() => placeBet(color as "red" | "green" | "black")}
+                    disabled={phase !== "waiting"}
+                    className={`${color}-button`}
+                  >
+                    Bet {color.charAt(0).toUpperCase() + color.slice(1)}
+                </button>
+                <h4 className="user-bet my-2">
+                  {localUser ? localUser[`${color}Bet` as keyof typeof localUser] : 0}
+                </h4>
+                <div className="global-bet-info flex items-center justify-between px-8 py-2">
+                   <div className="flex items-center space-x-4">
+                    <img className="w-10 h-10" src="/user.svg" alt="Users icon" />
+                    <p className="text-white">{bets[color as "red" | "green" | "black"].length}</p>
+                   </div>
+                    <p className="text-gray-500">
+                      Total bet: <span className="text-white">{amount}</span>
+                    </p>
+                </div>
+                {/* Render list of users' bets for each color */}
+                <div className="bet-list">
+                  {bets[color as "red" | "green" | "black"]
+                    .sort((a, b) => b.amount - a.amount)
+                    .map((bet, idx) => (
+                      <div key={idx} className="bet-item">
+                        <Link href={`/profile/${bet.username}`} target="_blank">
+                          <div className="flex cursor-pointer items-center gap-2">
+                            <img
+                              src={bet.profileImageUrl}
+                              alt={bet.username}
+                              className="w-10 h-10 rounded-3xl"
+                            />
+                            <span>{bet.username}</span>
+                          </div>
+                        </Link>
+                        <span className="bet-amount">{bet.amount}</span>
+                      </div>
+                  ))}
+                </div>
               </div>
-
-
-              {/* Render list of users' bets for each color */}
-              <div className="bet-list">
-                {bets[color as "red" | "green" | "black"].map((bet, idx) => (
-                  <div key={idx} className="bet-item">
-                    <div className="flex">
-                      <img src={bet.profileImageUrl} alt={bet.username} className="w-10 h-10 rounded-3xl" />
-                      <span>{bet.username}</span>
-                    </div>
-                     <span className="bet-amount">{bet.amount}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+            ))}
+        </div>
+        <div className="refuel-section">
+          {(showRefuel && phase === "waiting") && (
+            <button className="refuel-btn" onClick={handleRefuel}>
+              Refuel Balance
+            </button>
+          )}
+        </div>
+      
+      
       </div>
-
-      <div className="refuel-section">
-        {(showRefuel && phase === "waiting") && (
-          <button className="refuel-btn" onClick={handleRefuel}>
-            Refuel Balance
-          </button>
-        )}
-      </div>
-        
     </div>
   );
 };

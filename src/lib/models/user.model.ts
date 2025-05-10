@@ -15,7 +15,10 @@ const UserStatsSchema = new Schema({
   total_lost: { type: Number, default: 0 },
   greens_won: { type: Number, default: 0 },
   current_balance: { type: Number, default: 0 },
-});
+  lastRefuel1h: { type: Date },
+  lastRefuel4h: { type: Date },
+  lastRefuel24h: { type: Date },
+},{ timestamps: { createdAt: 'timeCreated', updatedAt: 'timeUpdated' } });
 
 const UserStats = mongoose.models.UserStats || mongoose.model('UserStats', UserStatsSchema);
 

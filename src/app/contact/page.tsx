@@ -1,17 +1,32 @@
 "use client"
-import "@styles/contact.css"
+import "@styles/contact.css";
 import "@styles/socketclient.css";
-
-import { useState } from 'react';
+import { useUser } from "@clerk/nextjs";
+import { useEffect, useState } from 'react';
 
 const Contact = () => {
+  const { user, isLoaded } = useUser();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     subject: '',
     message: '',
+    userid: ''
   });
   const [status, setStatus] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        userid: user.id
+      }));
+    }
+  }, [user]);
+
+  if (!isLoaded) {
+    return 
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -26,18 +41,30 @@ const Contact = () => {
     setStatus('Submitting...');
 
     try {
-      await fetch('/send-email', {
+      const res = await fetch('/api/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
-      setStatus('Success! Your message has been sent.');
+      if (res.ok) {
+        setStatus('Success! Your message has been sent.');
+        setFormData({
+          name: '',
+          email: '',
+          subject: '',
+          message: '',
+          userid: '', 
+        });
+      } else {
+        setStatus('Oops! Something went wrong. Please try again.');
+      }
     } catch (error) {
       setStatus('Oops! Something went wrong. Please try again.');
     }
   };
 
+  const isUserSignedIn = user?.id;
   return (
     <div className="contact-page">
       <div className="contact-content">
@@ -45,53 +72,69 @@ const Contact = () => {
         <p className="intro-text">
           We are always striving to improve our project and would love to hear your feedback, suggestions, or questions. Your thoughts help us make this platform better!
         </p>
-        
+
+        {isUserSignedIn ? (
         <form className="contact-form" onSubmit={handleSubmit}>
-          <label htmlFor="name">Name</label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            placeholder="Your Name"
-            value={formData.name}
-            onChange={handleChange}
-            required
-          />
+            <div className="form-row">
+              <div className="input-group">
+                <label htmlFor="name">Name</label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  placeholder="Your Name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
           
-          <label htmlFor="email">Email</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            placeholder="Your Email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-          />
-
-          <label htmlFor="subject">Subject</label>
-          <input
-            type="text"
-            id="subject"
-            name="subject"
-            placeholder="Subject of your message"
-            value={formData.subject}
-            onChange={handleChange}
-            required
-          />
+              <div className="input-group">
+                <label htmlFor="email">Email</label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  placeholder="Your Email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+        
+            <label htmlFor="subject">Subject</label>
+            <input
+              type="text"
+              id="subject"
+              name="subject"
+              placeholder="Subject of your message"
+              value={formData.subject}
+              onChange={handleChange}
+              required
+            />
+            <input
+              type="text"
+              name="honeypot"
+              style={{ display: 'none' }}
+              tabIndex={-1} 
+              />
+            <label htmlFor="message">Message</label>
+            <textarea
+              id="message"
+              name="message"
+              placeholder="Your Message"
+              value={formData.message}
+              onChange={handleChange}
+              required
+            ></textarea>
           
-          <label htmlFor="message">Message</label>
-          <textarea
-            id="message"
-            name="message"
-            placeholder="Your Message"
-            value={formData.message}
-            onChange={handleChange}
-            required
-          ></textarea>
-
-          <button type="submit">Submit</button>
+            <button type="submit">Submit</button>
         </form>
+        
+        ) : (
+          <p>Please sign in to send a message.</p>
+        )}
 
         {status && <p className="status">{status}</p>}
       </div>

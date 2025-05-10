@@ -15,7 +15,7 @@ body {
   }
   
   .leaderboard-header {
-	font-size: 3rem;
+	font-size: 2rem;
 	margin-bottom: 1rem;
 	text-align: center;
   }
@@ -24,15 +24,16 @@ body {
 	display: block;
 	margin: 0 auto 1.5rem;
 	padding: 0.5rem;
-	font-size: 1.5rem;
+	font-size: 1rem;
 	border-radius: 8px;
   }
   .leaderboard-select:focus {
 	outline: none;
   }
   .select-option {
-	color: black;
-	font-size: 1rem;
+	background-color: var(--color-bg-light);
+	color: rgb(255, 255, 255);
+	font-size: 0.8rem;
   }
   .leaderboard-component {
 	max-height: 600px;
@@ -43,7 +44,7 @@ body {
   
   .leaderboard-item {
 	display: grid;
-	grid-template-columns: 80px 80px 1fr 1fr;
+	grid-template-columns: 60px 60px 1fr 1fr;
 	align-items: center;
 	padding: 0.75rem 1rem;
 	border-bottom: 1px solid #444;
@@ -78,6 +79,7 @@ body {
   }
   
   .leaderboard-item.top-1 {
+	height: 120px;
 	background-color: rgb(211, 197, 77);
 	font-size: 2rem;
   }
@@ -86,6 +88,7 @@ body {
   }
   
   .leaderboard-item.top-2 {
+	height: 100px;
 	background-color: rgb(145, 145, 143);
 	font-size: 1.5rem;
   }
@@ -94,6 +97,7 @@ body {
   }
 
   .leaderboard-item.top-3 {
+	height: 80px;
 	font-size: 1.2rem;
 	background-color: rgb(126, 100, 91);
   }

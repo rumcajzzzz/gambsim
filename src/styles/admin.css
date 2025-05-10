@@ -1,0 +1,61 @@
+.admin-container {
+	padding: 2rem;
+	max-width: 800px	;
+	margin: 0 auto;
+	text-align: center;
+	font-family: Arial, sans-serif;
+	animation: fadeIn 0.6s ease-out;
+  }
+  
+  .admin-title {
+	font-size: 1.8rem;
+	font-weight: bold;
+	margin-bottom: 1rem;
+  }
+  
+  .status-text {
+	margin-bottom: 1.5rem;
+	color: #555;
+  }
+  
+  .button-group {
+	display: flex;
+	gap: 1rem;
+	height: 100px;
+	justify-content: center;
+  }
+  
+  .admin-btn {
+	padding: 0.75rem 1.5rem;
+	border: none;
+	border-radius: 6px;
+	font-size: 0.8rem;
+	cursor: pointer;
+	transition: all 0.3s ease;
+  }
+  
+  .admin-btn.green {
+	background-color: #28a745;
+	color: white;
+  }
+  
+  .admin-btn.red {
+	background-color: #dc3545;
+	color: white;
+  }
+  
+  .admin-btn:hover {
+	opacity: 0.85;
+  }
+  
+    /* Fade-in animation */
+	@keyframes fadeIn {
+		from {
+		  opacity: 0;
+		  transform: translateY(15px);
+		}
+		to {
+		  opacity: 1;
+		  transform: translateY(0);
+		}
+	  }

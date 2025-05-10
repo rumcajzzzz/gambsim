@@ -15,14 +15,14 @@
   
   .contact-content h1 {
 	font-size: 2.5rem;
-	color: var(--color-accent); /* Red accent color for heading */
+	color: var(--color-accent);
 	margin-bottom: 1.5rem;
   }
   
   .intro-text {
 	font-size: 1.2rem;
-	margin-bottom: 2rem;
-	color: var(--color-muted); /* Muted grey text */
+	margin-bottom: 1rem;
+	color: var(--color-muted);
   }
   
   .contact-form {
@@ -31,26 +31,38 @@
 	gap: 1rem;
   }
   
+  .contact-form .form-row {
+	display: flex;
+	gap: 1rem;
+	justify-content: space-between;
+  }
+  .form-row * {
+	flex: 1;
+  }
+  
   .contact-form label {
 	font-size: 1.125rem;
 	font-weight: 600;
-	color: var(--color-white); /* White text for labels */
+	color: var(--color-white);
 	text-align: left;
   }
   
   .contact-form input,
   .contact-form textarea {
 	padding: 10px;
-	font-size: 1rem;
-	background-color: var(--color-bg-medium); /* Dark grey background for inputs */
-	border: 2px solid var(--color-bg-light); /* Light grey border */
+	font-size: 0.8rem;
+	background-color: var(--color-bg-medium);
+	border: 2px solid var(--color-bg-light);
 	border-radius: 5px;
 	color: var(--color-white);
+	width: 100%;
   }
-  
+  .contact-form textarea {
+	height: 150px;
+  }
   .contact-form input:focus,
   .contact-form textarea:focus {
-	border-color: var(--color-accent); /* Red focus border */
+	border-color: var(--color-accent);
 	outline: none;
   }
   
@@ -58,8 +70,8 @@
 	margin-top: 15px;
 	padding: 12px;
 	font-size: 1.125rem;
-	background-color: var(--color-accent); /* Red button */
-	color: var(--color-bg-dark); /* Dark background for text */
+	background-color: var(--color-accent);
+	color: var(--color-bg-dark);
 	border: none;
 	border-radius: 5px;
 	cursor: pointer;
@@ -67,15 +79,15 @@
   }
   
   .contact-form button:hover {
-	background-color: #b71c1c; /* Darker red on hover */
+	background-color: #b71c1c;
   }
   
   .status {
 	margin-top: 1.5rem;
 	font-size: 1rem;
-	color: var(--color-accent); /* Red text for status messages */
+	color: var(--color-accent);
   }
-
+  
   @keyframes fadeIn {
 	from {
 	  opacity: 0;
@@ -86,3 +98,4 @@
 	  transform: translateY(0);
 	}
   }
+  

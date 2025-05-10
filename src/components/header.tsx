@@ -10,6 +10,7 @@ import {
 	useUser,
   } from '@clerk/nextjs'
 import { Navigation } from './navigation'
+import Link from "next/link";
 
 const Header = () => {
   const { user } = useUser() 
@@ -36,7 +37,9 @@ const Header = () => {
               </SignedOut>    
             <SignedIn>
               <div>
-                <span className="mx-10">{user?.username || user?.firstName || ''}</span>
+                <Link href={`/profile/${user?.username} `} target="_blank">
+                  <span className="mx-10">{user?.username || user?.firstName || ''}</span>
+                </Link>
               </div>
               <UserButton />
             </SignedIn>

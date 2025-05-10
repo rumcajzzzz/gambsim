@@ -12,7 +12,7 @@
   }
   
   .about-page h1 {
-	font-size: 3rem;
+	font-size: 2rem;
 	text-align: center;
 	margin-bottom: var(--section-gap);
 	color: var(--color-accent);
@@ -37,14 +37,14 @@
   }
   
   .about-page h2 {
-	font-size: 1.75rem;
+	font-size: 1.2rem;
 	color: var(--color-white);
 	font-weight: 500;
 	margin-bottom: 1rem;
   }
   
   .about-page p {
-	font-size: 1.125rem;
+	font-size: 1rem;
 	color: var(--color-muted);
 	margin: 2rem 0 2rem 0;
 	line-height: 1.7;
