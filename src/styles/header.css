@@ -1,0 +1,6 @@
+.headdy {
+	background-color: var(--color-bg-dark);
+	padding: 50px 10px;
+	margin: 10px 25px 20px 25px;
+	border-radius: 15px;
+}

@@ -1,25 +1,41 @@
-@import "./variables.css"; 
+:root {
+	--text-active-color: #00ffcc;
+	--text-inactive-color: #888;
+}
 
 .link {
-	font-size: 1.125rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	padding: 10px;
 	margin: 0 30px;
 	border-radius: 5px;
-	transition: color 0.3s, background-color 0.3s;
-  }
-  
-  .link--active {
-	color: var(--text-active-color);
-  }
-  
-  .link--inactive {
-	color: var(--text-inactive-color);
-  }
-  
-  
+	transition: all 0.3s ease;
+}
+
+.link img {	
+	transition: all 0.3s ease;
+}
+
+.link--active img {
+	transform: scale(1.4);
+	filter: brightness(0) saturate(100%) invert(1)
+		drop-shadow(0 0 8px red)
+		drop-shadow(0 0 16px red);
+}
+
+.link--inactive img {
+	filter: brightness(0) saturate(100%) invert(0.6);
+}
+
+.link--inactive:hover img {
+	transform: scale(1.2) translateY(-4px);
+	filter: brightness(0) saturate(100%) invert(1);
+}
+
 .navbar {
 	position: sticky;
-	top: 45px;
-	left: 50%;
-	transform: translateX(-50%);
+	display: flex;
+	align-items:end;
+	margin: 50px 15px;
 }

@@ -1,15 +1,16 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import "../styles/navigation.css"; 
+import "@styles/navigation.css"; 
 
 export const Navigation = () => {
   const pathName = usePathname();
 
   const links = [
-    { href: "/", text: "Home"},
-    { href: "/about", text: "About"},
-    { href: "/contact", text: "Contact"},
+    { href: "/", text: "Home", icon: "/homeicon.svg"},
+    { href: "/leaderboard", text: "Leaderboard", icon: "/leaderboardicon.svg"},
+    { href: "/about", text: "About", icon: "/abouticon.svg"},
+    { href: "/contact", text: "Contact", icon: "/contacticon.svg"},
   ];
 
   return (
@@ -21,8 +22,8 @@ export const Navigation = () => {
             key={link.href}
             href={link.href}
             className={`link ${isActive ? "link--active" : "link--inactive"}`}
-          >
-            {link.text}
+          > 
+            {link.icon && <img src={link.icon} alt={link.text} className="w-6 h-6"/>}
           </Link>
         );
       })}

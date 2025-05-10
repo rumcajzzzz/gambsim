@@ -6,7 +6,7 @@ import { clerkClient } from '@clerk/nextjs/server';
 
 export async function GET() {
   try {
-    const { userId, has} = await auth();
+    const { userId } = await auth();
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -44,12 +44,12 @@ export async function GET() {
         greens_won: 0,
         current_balance: 0,
       });
-      console.log("User stats created:", stats);
+      // console.log("User stats created:", stats);
     } else {
       let updated = false;
-      console.log("Comparing user data with existing stats:");
+      // console.log("Comparing user data with existing stats:");
       for (const [key, value] of Object.entries(updatedUserData)) {
-        console.log(`Comparing ${key}: Stored = ${stats[key]}, Incoming = ${value}`);
+        // console.log(`Comparing ${key}: Stored = ${stats[key]}, Incoming = ${value}`);
         if (stats[key] !== value) {
           stats[key] = value;
           updated = true;
@@ -57,15 +57,15 @@ export async function GET() {
       }
 
       if (updated) {
-        console.log("Data updated, saving...");
+        // console.log("Data updated, saving...");
         await stats.save();
-        console.log("Stats saved:", stats);
-      } else console.log("No changes detected, no update needed.")
+        // console.log("Stats saved:", stats);
+      }  // } else console.log("No changes detected, no update needed.")
     }
 
     return NextResponse.json(stats);
   } catch (err) {
-    console.error('Error in user-stats GET:', err);
+    // console.error('Error in user-stats GET:', err);
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
   }
 }
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
     await userStats.save();
     return NextResponse.json(userStats);
   } catch (err) {
-    console.error('Error updating stats:', err);
+    // console.error('Error updating stats:', err);
     return NextResponse.json({ error: 'Failed to update stats' }, { status: 500 });
   }
 }

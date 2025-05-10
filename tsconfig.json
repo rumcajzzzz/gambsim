@@ -19,10 +19,15 @@
       }
     ],
     "paths": {
+      "@public/*": ["./public/*"],
+      "@styles/*": ["./src/styles/*"],
       "@/*": ["./src/*"],
       "@lib/*": ["./src/lib/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@audio/*": ["./src/assets/mp3/*"],
+      "@components/*": ["./src/components/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "server.mjs", "src/lib/socket.js", "../backend/gamestate.model.ts", "src/app/pages/leaderboard/page.js", "src/app/pages/leaderboard/page.js", "src/pages/leaderboard/index.js"],
   "exclude": ["node_modules"]
 }
