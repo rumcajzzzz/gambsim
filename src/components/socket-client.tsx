@@ -66,7 +66,7 @@ export const SocketClient = () => {
   }, []);
   
   useEffect(() => {
-    const backendURL = process.env.BACKEND_URL || 'https://backend-ua1v.onrender.com';
+    const backendURL = process.env.BACKEND_URL || 'wss://backend-ua1v.onrender.com';
     console.log('Connecting to backend at:', backendURL);  
     const socketInstance = io(backendURL, {
       transports: ['websocket'],
