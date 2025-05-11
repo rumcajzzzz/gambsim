@@ -4,23 +4,19 @@ import { notFound } from 'next/navigation';
 import '@styles/socketclient.css';
 import '@styles/profile.css';
 
-declare module 'next' {
-  interface PageProps {
-    params: Record<string, string>;
-    searchParams?: Record<string, string | string[] | undefined>;
-  }
-}
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
   return [];
 }
 
-async function ProfilePage({
+export default async function Page({
   params
 }: {
   params: { username: string };
 }) {
   const { username } = params;
+  
   if (!username) notFound();
 
   await connect();
@@ -32,7 +28,6 @@ async function ProfilePage({
     month: 'long',
     day: 'numeric',
   });
-
   return (
     <div className="profile-container">
       <div className="profile-header">
@@ -88,5 +83,3 @@ async function ProfilePage({
     </div>
   );
 };
-
-export default ProfilePage;
