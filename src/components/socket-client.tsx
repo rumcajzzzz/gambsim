@@ -66,11 +66,7 @@ export const SocketClient = () => {
   }, []);
   
   useEffect(() => {
-    const backendURL = process.env.BACKEND_URL || 'wss://backend-ua1v.onrender.com';
-    console.log('Connecting to backend at:', backendURL);  
-    const socketInstance = io(backendURL, {
-      transports: ['websocket'],
-    });
+    const socketInstance = io("https://backend-igom.onrender.com") // provide backend url
     
     // In case of weird database behaviour/resolvingbets etc. uncomment this code and comment the useEffect up there!
     // socketInstance.on("connect", () => {
