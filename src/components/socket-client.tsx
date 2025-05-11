@@ -66,7 +66,7 @@ export const SocketClient = () => {
   }, []);
   
   useEffect(() => {
-    const socketInstance = io("http://localhost:3001")
+    const socketInstance = io(`${process.env.BACKEND_API_URL}`)
     
     // In case of weird database behaviour/resolvingbets etc. uncomment this code and comment the useEffect up there!
     // socketInstance.on("connect", () => {
