@@ -1,32 +1,36 @@
+// File: app/profile/[username]/page.tsx
 import { connect } from '@/lib/mongo';
 import UserStats from '@/lib/models/user.model';
 import { notFound } from 'next/navigation';
 import '@styles/socketclient.css';
 import '@styles/profile.css';
 
+type PageProps = {
+  params: {
+    username: string;
+  };
+  searchParams?: Record<string, string | string[] | undefined>;
+};
+
 export async function generateStaticParams() {
   return [];
 }
 
-const ProfilePage = async ({ params }: { params: { username: string } }) => {
-  const { username } = await params;
-
-  if (!username) {
+const ProfilePage = async ({ params }: PageProps) => { 
+  const { username } = params;
+  if (!username) {         
     notFound();
   }
   await connect();
   const userMongo = await UserStats.findOne({ username });
-
   if (!userMongo) {
     notFound();
   }
-
   const createdAt = userMongo.timeCreated.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
-
   return (
     <div className="profile-container">
       <div className="profile-header">
