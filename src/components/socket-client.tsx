@@ -66,12 +66,12 @@ export const SocketClient = () => {
   }, []);
   
   useEffect(() => {
-    const socketInstance = io("http://localhost:3001/")
+    const socketInstance = io("http://localhost:3001")
     
     // In case of weird database behaviour/resolvingbets etc. uncomment this code and comment the useEffect up there!
     // socketInstance.on("connect", () => {
     //   setConnected(true);
-    //   if (user?.id) socketInstance.emit("userClerkId", user.id);
+    //   if (user?.id) socketInstance.emit("userClerkId", user. id);
     // })
 
     socketInstance.on("currentBetData", (data: any) => {
