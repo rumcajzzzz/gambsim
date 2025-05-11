@@ -66,7 +66,7 @@ export const SocketClient = () => {
   }, []);
   
   useEffect(() => {
-    const socketInstance = io("https://backend-igom.onrender.com") // provide backend url
+    const socketInstance = io("https://gambsim-backend.onrender.com") // provide backend url
     
     // In case of weird database behaviour/resolvingbets etc. uncomment this code and comment the useEffect up there!
     // socketInstance.on("connect", () => {
