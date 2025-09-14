@@ -41,6 +41,7 @@ export const SocketClient = () => {
     black: [] as { username: string; amount: number; profile_image_url: string }[],
   });
   const [slotOffset, setSlotOffset] = useState(0); // offset slotów synchronizowany z serwerem
+  const [roundEnd, setRoundEnd] = useState<number | null>(null);
 
   const { user } = useUser();
 
@@ -53,13 +54,7 @@ export const SocketClient = () => {
   }, []);
   
   useEffect(() => {
-    const socketInstance = io("http://localhost:3001")
-    
-    // In case of weird database behaviour/resolvingbets etc. uncomment this code and comment the useEffect up there!
-    // socketInstance.on("connect", () => {
-    //   setConnected(true);
-    //   if (user?.id) socketInstance.emit("userClerkId", user. id);
-    // })
+    const socketInstance = io("http://localhost:3001");
 
     socketInstance.on("currentBetData", (data: any) => {
       setBets({
@@ -84,8 +79,9 @@ export const SocketClient = () => {
       setBalance(data.points);
       setRollHistory(data.rollHistory);
       setPhase(data.status);
-      setCountdown(data.timeLeft);
+      setShowRefuel(data.showRefuel);
       setCurrentBets(data.globalBets);
+      if (data.roundEnd) setCountdown(Math.max(0, Math.ceil((data.roundEnd - Date.now()) / 1000)));
     });
 
     socketInstance.on("betsUpdated", (bets: { red: number; green: number; black: number }) => {
@@ -110,16 +106,22 @@ export const SocketClient = () => {
     socketInstance.on('slotOffset', (offset: number) => {
       setSlotOffset(offset);
     });
-
-    socketInstance.on("status", (status: "waiting" | "rolling") => {
-      setPhase(status);
-      if (status === "waiting") {
+    
+    socketInstance.on("status", (statusData: { phase: string; roundEnd?: number }) => {
+      setPhase(statusData.phase as any);
+    
+      if (statusData.roundEnd) {
+        setCountdown(Math.max(0, Math.ceil((statusData.roundEnd - Date.now()) / 1000)));
+      }
+    
+      if (statusData.phase === "rolling") {
         setWinningColor("");
         setCurrentBets({ red: 0, green: 0, black: 0 });
-        setCountdown(10);
-      } else if (status === "rolling") {
-        setCountdown(null);
       }
+    });
+    
+    socketInstance.on('countdown', (seconds: number) => {
+      setCountdown(seconds);
     });
 
     socketInstance.on("userBets", (user: UserBets) => {
@@ -131,27 +133,27 @@ export const SocketClient = () => {
     });
 
     socketInstance.on("publicBetPlaced", (data: { 
-      username: string; 
-      amount: number;
-      color: "red" | "green" | "black"; 
-      profile_image_url: string 
-    }) => {
-      setBets(prev => {
-        const updated = { ...prev };
-        const existing = updated[data.color].find(b => b.username === data.username);
-    
-        if (existing) {
-          existing.amount = data.amount;
-        } else {
-          updated[data.color].push({
-            username: data.username,
-            amount: data.amount,
-            profile_image_url: data.profile_image_url,
-          });
-        }
-    
-        return updated;
-      });
+        username: string; 
+        amount: number;
+        color: "red" | "green" | "black"; 
+        profile_image_url: string 
+      }) => {
+        setBets(prev => {
+          const updated = { ...prev };
+          const existing = updated[data.color].find(b => b.username === data.username);
+      
+          if (existing) {
+            existing.amount = data.amount;
+          } else {
+            updated[data.color].push({
+              username: data.username,
+              amount: data.amount,
+              profile_image_url: data.profile_image_url,
+            });
+          }
+      
+          return updated;
+        });
       
     });
 
@@ -162,14 +164,16 @@ export const SocketClient = () => {
 
   // Countdown
   useEffect(() => {
-    if (phase === "waiting" && countdown !== null && countdown > 0) {
-      const interval = setInterval(() => {
-        setCountdown(prev => (prev !== null ? prev - 1 : null));
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [countdown, phase]);
+    if (!roundEnd) return;
 
+    const interval = setInterval(() => {
+      setCountdown(Math.max(0, Math.ceil((roundEnd - Date.now()) / 1000)));
+    }, 250);
+
+    return () => clearInterval(interval);
+  }, [roundEnd]);
+
+  
   const placeBet = (color: "red" | "green" | "black") => {
     if (phase !== "waiting" || betAmount <= 0 || betAmount > balance) return;
 
@@ -207,8 +211,6 @@ export const SocketClient = () => {
             <p>Result shown!</p>
           )}
         </div>
-
-        <SlotBar offset={slotOffset} />
 
         <div className="roll-history">
           <ul className="flex mx-50">
