@@ -48,31 +48,38 @@ export const SocketClient = () => {
   const centerSlot = 10;
   const positionOffset = 5;
 
-  // Ustawiamy początkową pozycję slot bar
   useEffect(() => {
-    controls.set({ x: -(centerSlot * slotWidth) });
+    controls.set({ x: -(centerSlot * slotWidth) }); 
   }, []);
-
+  
   useEffect(() => {
-    const socketInstance = io("http://localhost:3001/");
+    const socketInstance = io("http://localhost:3001")
+    
+    // In case of weird database behaviour/resolvingbets etc. uncomment this code and comment the useEffect up there!
+    // socketInstance.on("connect", () => {
+    //   setConnected(true);
+    //   if (user?.id) socketInstance.emit("userClerkId", user. id);
+    // })
 
-    setSocket(socketInstance);
-
-    socketInstance.on("connect", () => {
-      setConnected(true);
-      if (user?.id) {
-        socketInstance.emit("userClerkData", {
-          userId: user.id,
-          username: user.username,
-          email: user.emailAddresses?.[0]?.emailAddress,
-          first_name: user.firstName,
-          last_name: user.lastName,
-          profile_image_url: user.imageUrl,
-        });
-      }
+    socketInstance.on("currentBetData", (data: any) => {
+      setBets({
+        red: Object.values(data.red || {}),
+        green: Object.values(data.green || {}),
+        black: Object.values(data.black || {}),
+      });
     });
 
-    // Dane początkowe
+    setSocket(socketInstance)
+
+    socketInstance.emit("userClerkData", {
+       userId: user?.id,
+       username: user?.username,
+       email: user?.emailAddresses?.[0]?.emailAddress,
+       first_name: user?.firstName,
+       last_name: user?.lastName,
+       profile_image_url: user?.imageUrl,
+    })
+
     socketInstance.on("initialState", (data: any) => {
       setBalance(data.points);
       setRollHistory(data.rollHistory);

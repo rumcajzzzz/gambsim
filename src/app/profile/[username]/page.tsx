@@ -1,23 +1,26 @@
-// File: app/profile/[username]/page.tsx
 import { connect } from '@/lib/mongo';
 import UserStats from '@/lib/models/user.model';
 import { notFound } from 'next/navigation';
 import '@styles/socketclient.css';
 import '@styles/profile.css';
 
-interface ProfilePageProps {
-  params: {
-    username: string;
-  };
+export async function generateStaticParams() {
+  return [];
 }
 
-const ProfilePage = async ({ params }: ProfilePageProps) => {
+const ProfilePage = async ({ params }: { params: { username: string } }) => {
+  const { username } = await params;
 
-  const username = params?.username;
-  if (!username) notFound();
-
+  if (!username) {
+    notFound();
+  }
   await connect();
   const userMongo = await UserStats.findOne({ username });
+
+  if (!userMongo) {
+    notFound();
+  }
+
   const createdAt = userMongo.timeCreated.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -27,14 +30,13 @@ const ProfilePage = async ({ params }: ProfilePageProps) => {
   return (
     <div className="profile-container">
       <div className="profile-header">
-        <img src={userMongo.profile_image_url} alt="User profile image" className="profile-image" />
+        <img src={userMongo.profile_image_url} alt="User profile" className="profile-image" />
         <h1 className="username">{userMongo.username}</h1>
         <p className="account-created">Account Created: {createdAt}</p>
       </div>
 
       <div className="stats-container">
         <h2 className="stats-header">Statistics</h2>
-
         <div className="stat-grid">
           <div className="stat-card balance-card">
             <span className="stat-label">💰 Current Balance:</span>
