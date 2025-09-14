@@ -6,6 +6,7 @@ import io, { Socket } from "socket.io-client";
 import "../styles/socketclient.css";
 import Link from "next/link";
 import { baseColors, baseNumbers, buildSlotArray, useSound } from '@/utils/gameLogic';
+import SlotBar from './slotbar';
 
 export const SocketClient = () => {
   const controls = useAnimation();
@@ -20,6 +21,7 @@ export const SocketClient = () => {
     blackBet: number;
     showRefuel: boolean;
   }
+
   const [localUser, setLocalUser] = useState<UserBets | null>(null);
   const [balance, setBalance] = useState(0);
   const [roll, setRoll] = useState<number | null>(null);
@@ -32,106 +34,75 @@ export const SocketClient = () => {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [rollHistory, setRollHistory] = useState<number[]>([]);
   const [showRefuel, setShowRefuel] = useState<boolean | null>(null);
-  const [currentBets, setCurrentBets] = useState({
-    red: 0,
-    green: 0,
-    black: 0,
-  });
+  const [currentBets, setCurrentBets] = useState({ red: 0, green: 0, black: 0 });
   const [bets, setBets] = useState({
     red: [] as { username: string; amount: number; profile_image_url: string }[],
     green: [] as { username: string; amount: number; profile_image_url: string }[],
     black: [] as { username: string; amount: number; profile_image_url: string }[],
   });
+  const [slotOffset, setSlotOffset] = useState(0); // offset slotów synchronizowany z serwerem
+
   const { user } = useUser();
 
   const slotWidth = 80; 
   const centerSlot = 10;
   const positionOffset = 5;
-  useEffect(() => {
-    if (connected && user?.id) {
-      socket?.emit("userClerkId", user.id);
-      socket?.emit("userClerkData", {
-        userId: user.id,
-        username: user.username,
-        email: user.emailAddresses?.[0]?.emailAddress,
-        first_name: user.firstName,
-        last_name: user.lastName,
-        profile_image_url: user.imageUrl,
-      });
-    }
-  }, [connected, user, socket]);
 
+  // Ustawiamy początkową pozycję slot bar
   useEffect(() => {
-    controls.set({ x: -(centerSlot * slotWidth) }); 
+    controls.set({ x: -(centerSlot * slotWidth) });
   }, []);
-  
-  useEffect(() => {
-    const socketInstance = io("http://localhost:3001/")
-    
-    // In case of weird database behaviour/resolvingbets etc. uncomment this code and comment the useEffect up there!
-    // socketInstance.on("connect", () => {
-    //   setConnected(true);
-    //   if (user?.id) socketInstance.emit("userClerkId", user.id);
-    // })
 
-    socketInstance.on("currentBetData", (data: any) => {
-      setBets({
-        red: Object.values(data.red || {}),
-        green: Object.values(data.green || {}),
-        black: Object.values(data.black || {}),
-      });
+  useEffect(() => {
+    const socketInstance = io("http://localhost:3001/");
+
+    setSocket(socketInstance);
+
+    socketInstance.on("connect", () => {
+      setConnected(true);
+      if (user?.id) {
+        socketInstance.emit("userClerkData", {
+          userId: user.id,
+          username: user.username,
+          email: user.emailAddresses?.[0]?.emailAddress,
+          first_name: user.firstName,
+          last_name: user.lastName,
+          profile_image_url: user.imageUrl,
+        });
+      }
     });
 
-    setSocket(socketInstance)
-
-    socketInstance.emit("userClerkData", {
-       userId: user?.id,
-       username: user?.username,
-       email: user?.emailAddresses?.[0]?.emailAddress,
-       first_name: user?.firstName,
-       last_name: user?.lastName,
-       profile_image_url: user?.imageUrl,
-    })
-
+    // Dane początkowe
     socketInstance.on("initialState", (data: any) => {
       setBalance(data.points);
       setRollHistory(data.rollHistory);
       setPhase(data.status);
       setCountdown(data.timeLeft);
       setCurrentBets(data.globalBets);
-    })
+    });
 
     socketInstance.on("betsUpdated", (bets: { red: number; green: number; black: number }) => {
-      
       setCurrentBets(bets);
-    })
+    });
 
     socketInstance.on("balanceUpdated", (newBalance: number) => {
       setBalance(newBalance);
-    })
+    });
 
     socketInstance.on("newRoll", async (roll: number[]) => {
       playSpinSound();
       setRoll(roll[0]);
-
-      const result = roll[0];
-      const loops = 6;
-      const newIndex = result + loops * baseNumbers.length + positionOffset;
-      const safeLoopZone = 2 * baseNumbers.length;
-      
-      await controls.start({
-        x: -(newIndex - centerSlot) * slotWidth,
-        transition: { duration: 8, ease: [0.05, 0.9999, 0.999999999, 1] },
-      });
-      
-      const newSafeIndex = safeLoopZone + (newIndex % baseNumbers.length);
-      controls.set({ x: -(newSafeIndex - centerSlot) * slotWidth });
+      setSlotOffset(0);
       playEndRoundSound();
-      setWinningColor(result === 0 ? 'green' : result % 2 === 1 ? 'red' : 'black');
       setWinningColor(roll[0] === 0 ? 'green' : roll[0] % 2 === 1 ? 'red' : 'black');
-      setBets({red: [], green: [], black: []});
+      setBets({ red: [], green: [], black: [] });
       setRollHistory(roll);
-    })
+    });
+
+    // Aktualizacja slotów 30Hz
+    socketInstance.on('slotOffset', (offset: number) => {
+      setSlotOffset(offset);
+    });
 
     socketInstance.on("status", (status: "waiting" | "rolling") => {
       setPhase(status);
@@ -142,48 +113,56 @@ export const SocketClient = () => {
       } else if (status === "rolling") {
         setCountdown(null);
       }
-    })
+    });
 
     socketInstance.on("userBets", (user: UserBets) => {
       setLocalUser(user);
-    })
+    });
 
     socketInstance.on("showRefuel", (show: boolean) => {
       setShowRefuel(show);
-    })
+    });
 
-    socketInstance.on("publicBetPlaced", (data: { username: string; amount: number; color: "red" | "green" | "black"; profile_image_url: string }) => {
-      setBets((prevBets) => {
-        const updatedBets = { ...prevBets };
-        const existingBet = updatedBets[data.color].find(bet => bet.username === data.username);
-        if (existingBet) {
-          existingBet.amount += data.amount;
+    socketInstance.on("publicBetPlaced", (data: { 
+      username: string; 
+      amount: number;
+      color: "red" | "green" | "black"; 
+      profile_image_url: string 
+    }) => {
+      setBets(prev => {
+        const updated = { ...prev };
+        const existing = updated[data.color].find(b => b.username === data.username);
+    
+        if (existing) {
+          existing.amount = data.amount;
         } else {
-          updatedBets[data.color].push({
+          updated[data.color].push({
             username: data.username,
             amount: data.amount,
             profile_image_url: data.profile_image_url,
           });
         }
-        return updatedBets;
+    
+        return updated;
       });
+      
     });
 
     return () => {
       socketInstance.disconnect();
-    }
+    };
+  }, [user?.id]);
 
-  }, [user?.id])
-
+  // Countdown
   useEffect(() => {
     if (phase === "waiting" && countdown !== null && countdown > 0) {
       const interval = setInterval(() => {
-        setCountdown((prev) => (prev !== null ? prev - 1 : null));
+        setCountdown(prev => (prev !== null ? prev - 1 : null));
       }, 1000);
       return () => clearInterval(interval);
     }
   }, [countdown, phase]);
-  
+
   const placeBet = (color: "red" | "green" | "black") => {
     if (phase !== "waiting" || betAmount <= 0 || betAmount > balance) return;
 
@@ -202,15 +181,14 @@ export const SocketClient = () => {
       setTimeout(() => setRefreshing(false), 1000);
     }
   };
-  
+
   const handleRefuel = () => {
     socket?.emit("refuel", false);
   };
-
+  
   return (
     <div className="container">
       <div className="socket-client-container">
-
         <div className="phase-info my-2">
           {phase === "waiting" && countdown !== null ? (
             <p>Rolling in: {countdown}s</p>
@@ -221,34 +199,10 @@ export const SocketClient = () => {
           ) : (
             <p>Result shown!</p>
           )}
-      
         </div>
 
-        <div className="flex justify-center align-center">
-          <div className="slotbar-container w-[880px] overflow-hidden rounded-xl shadow-2xl">
-            <motion.div 
-              className="flex w-max" 
-              animate={controls}
-              initial={{ x: 0 }}
-              >
-              {slots.map((num, i) => {
-                const color = baseColors[num % 15];
-                return (
-                  <div
-                    key={`${i}-${num}`}
-                    className={`w-20 h-20 flex items-center justify-center text-white font-bold text-xl ${
-                      color === "green" ? "bg-green-600" : 
-                      color === "red" ? "bg-red-600" : "bg-black"
-                    }`}
-                  >
-                    {num}
-                  </div>
-                );
-              })}
-            </motion.div>
-          </div>
-        </div>
-        
+        <SlotBar offset={slotOffset} />
+
         <div className="roll-history">
           <ul className="flex mx-50">
             <p className="history-text">HISTORY</p>
@@ -339,11 +293,12 @@ export const SocketClient = () => {
                       <div key={idx} className="bet-item">
                         <Link href={`/profile/${bet.username}`} target="_blank">
                           <div className="flex cursor-pointer items-center gap-2">
-                            <img
-                              src={user?.imageUrl}
-                              alt={bet.username}
-                              className="w-10 h-10 rounded-3xl"
-                            />
+                          <img
+                            src={bet.profile_image_url || "/default-avatar.png"}
+                            alt={bet.username}
+                            className="w-10 h-10 rounded-3xl"
+                          />
+
                             <span>{bet.username}</span>
                           </div>
                         </Link>
