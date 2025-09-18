@@ -40,8 +40,9 @@ export const SocketClient = () => {
     green: [] as { username: string; amount: number; profile_image_url: string }[],
     black: [] as { username: string; amount: number; profile_image_url: string }[],
   });
-  const [slotOffset, setSlotOffset] = useState(0); // offset slotów synchronizowany z serwerem
+  const [slotOffset, setSlotOffset] = useState(0);
   const [roundEnd, setRoundEnd] = useState<number | null>(null);
+  const [visibleIndexes, setVisibleIndexes] = useState<number[]>([]);
 
   const { user } = useUser();
 
@@ -88,10 +89,6 @@ export const SocketClient = () => {
       setCurrentBets(bets);
     });
 
-    socketInstance.on("balanceUpdated", (newBalance: number) => {
-      setBalance(newBalance);
-    });
-
     socketInstance.on("newRoll", async (roll: number[]) => {
       playSpinSound();
       setRoll(roll[0]);
@@ -102,11 +99,14 @@ export const SocketClient = () => {
       setRollHistory(roll);
     });
 
-    // Aktualizacja slotów 30Hz
     socketInstance.on('slotOffset', (offset: number) => {
       setSlotOffset(offset);
     });
     
+    socketInstance.on("balanceUpdated", (newBalance: number) => {
+      setBalance(newBalance);
+    });
+
     socketInstance.on("status", (statusData: { phase: string; roundEnd?: number }) => {
       setPhase(statusData.phase as any);
     
@@ -127,11 +127,7 @@ export const SocketClient = () => {
     socketInstance.on("userBets", (user: UserBets) => {
       setLocalUser(user);
     });
-
-    socketInstance.on("showRefuel", (show: boolean) => {
-      setShowRefuel(show);
-    });
-
+    
     socketInstance.on("publicBetPlaced", (data: { 
         username: string; 
         amount: number;
@@ -155,6 +151,18 @@ export const SocketClient = () => {
           return updated;
         });
       
+    });
+
+    socketInstance.on('showRefuel', (temp: boolean) => {
+      setShowRefuel(temp);
+      
+    });
+
+    socketInstance.on("playerUpdated", (data: { balance: number; refueled?: boolean }) => {
+      setBalance(data.balance);
+      setLocalUser(prev => prev ? { ...prev, points: data.balance } : prev);
+  
+      if (data.refueled) setShowRefuel(false);
     });
 
     return () => {
@@ -194,7 +202,8 @@ export const SocketClient = () => {
   };
 
   const handleRefuel = () => {
-    socket?.emit("refuel", false);
+    socket?.emit("refuel");
+    setShowRefuel(false);
   };
   
   return (
@@ -245,14 +254,13 @@ export const SocketClient = () => {
           <h2>Balance: </h2>
           <h2>{refreshing ? "..." : balance}</h2>
             {showRefuel && phase === "waiting" ? (
-              <button className="refuel-button" onClick={handleRefuel}>
-                <img src="/refuelicon.svg" alt="refuel icon" className='w-10 h-10 aspect-1/1 invert' />
-              </button>
-            ) : (
-              
-              <button className="balance-refresh-button" onClick={handleRefresh} disabled={refreshing}>
-                {refreshing ? <span className="animate-spin">↻</span> : "↻"}
-              </button>
+                <button className="refuel-button" onClick={handleRefuel}>
+                  <img src="/refuelicon.svg" alt="refuel icon" className='w-10 h-10 aspect-1/1 invert' />
+                </button>
+              ) : (
+                <button className="balance-refresh-button" onClick={handleRefresh} disabled={refreshing}>
+                  {refreshing ? <span className="animate-spin">↻</span> : "↻"}
+                </button>
             )}
           </div>
           <div className="betinput-buttons">
@@ -268,56 +276,71 @@ export const SocketClient = () => {
         </div>
       
         <div className="bet-columns">
-            {[...Object.entries(currentBets)].map(([color, amount]) => (
-              <div
-                  key={color}
-                  className={`bet-column ${color} ${
-                    phase === "result" && winningColor && winningColor !== color ? "bet-column-fade" : ""
-                  }`}
-                >
-                <button
-                    onClick={() => placeBet(color as "red" | "green" | "black")}
-                    disabled={phase !== "waiting"}
-                    className={`${color}-button`}
-                  >
-                    Bet {color.charAt(0).toUpperCase() + color.slice(1)}
-                </button>
-                <h4 className="user-bet my-2">
-                  {localUser ? localUser[`${color}Bet` as keyof typeof localUser] : 0}
-                </h4>
-                <div className="global-bet-info flex items-center justify-between px-8 py-2">
-                   <div className="flex items-center space-x-4">
-                    <img className="w-10 h-10" src="/user.svg" alt="Users icon" />
-                    <p className="text-white">{bets[color as "red" | "green" | "black"].length}</p>
-                   </div>
-                    <p className="text-gray-500">
-                      Total bet: <span className="text-white">{amount}</span>
-                    </p>
-                </div>
-                {/* Render list of users' bets for each color */}
-                <div className="bet-list">
-                  {bets[color as "red" | "green" | "black"]
-                    .sort((a, b) => b.amount - a.amount)
-                    .map((bet, idx) => (
-                      <div key={idx} className="bet-item">
-                        <Link href={`/profile/${bet.username}`} target="_blank">
-                          <div className="flex cursor-pointer items-center gap-2">
-                          <img
-                            src={bet.profile_image_url || "/default-avatar.png"}
-                            alt={bet.username}
-                            className="w-10 h-10 rounded-3xl"
-                          />
+  {[...Object.entries(currentBets)].map(([color, amount]) => (
+    <div
+      key={color}
+      className={`bet-column ${color} ${
+        phase === "result" && winningColor && winningColor !== color
+          ? "bet-column-fade"
+          : ""
+      }`}
+    >
+      <button
+        onClick={() => placeBet(color as "red" | "green" | "black")}
+        disabled={phase !== "waiting"}
+        className={`${color}-button`}
+      >
+        Bet {color.charAt(0).toUpperCase() + color.slice(1)}
+      </button>
+      <h4 className="user-bet my-2">
+        {localUser ? localUser[`${color}Bet` as keyof typeof localUser] : 0}
+      </h4>
 
-                            <span>{bet.username}</span>
-                          </div>
-                        </Link>
-                        <span className="bet-amount">{bet.amount}</span>
-                      </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+      <div className="global-bet-info flex items-center justify-between px-8 py-2">
+        <div className="flex items-center space-x-4">
+          <img
+            className="w-10 h-10 rounded-full"
+            src="/user.svg"
+            alt="Users icon"
+          />
+          <p className="text-white">{bets[color as "red" | "green" | "black"]?.length || 0}</p>
         </div>
+        <p className="text-gray-500">
+          Total bet: <span className="text-white">{amount}</span>
+        </p>
+      </div>
+
+      {/* Lista betów użytkowników */}
+      <div className="bet-list">
+        {(!bets[color as "red" | "green" | "black"] || bets[color as "red" | "green" | "black"].length === 0) ? (
+          <div className="flex justify-center items-center h-10 w-full animate-pulse text-gray-400">
+            Loading bets...
+          </div>
+        ) : 
+          (
+            bets[color as "red" | "green" | "black"]
+              .sort((a, b) => b.amount - a.amount)
+              .map((bet, idx) => (
+                <div key={idx} className="bet-item">
+                  <Link href={`/profile/${bet.username}`} target="_blank">
+                    <div className="flex cursor-pointer items-center gap-2">
+                      <img
+                        src={bet.profile_image_url || "/default-avatar.png"}
+                        alt={bet.username}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                      <span>{bet.username}</span>
+                    </div>
+                  </Link>
+                  <span className="bet-amount">{bet.amount}</span>
+                </div>
+              ))
+          )
+        }
+      </div>
+    </div>
+  ))}
+</div>
 
         {/* <div className="refuel-section">
           {(showRefuel && phase === "waiting") && (
