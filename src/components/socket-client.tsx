@@ -7,6 +7,7 @@ import "../styles/socketclient.css";
 import Link from "next/link";
 import { baseColors, baseNumbers, buildSlotArray, useSound } from '@/utils/gameLogic';
 import SlotBar from './slotbar';
+import Slider from './slotbar2';
 
 export const SocketClient = () => {
   const controls = useAnimation();
@@ -220,6 +221,8 @@ export const SocketClient = () => {
             <p>Result shown!</p>
           )}
         </div>
+
+        <Slider />
 
         <div className="roll-history">
           <ul className="flex mx-50">
