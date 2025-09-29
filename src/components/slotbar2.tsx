@@ -4,49 +4,93 @@ import io from "socket.io-client";
 
 const socket = io("http://localhost:3001", { transports: ["websocket"] });
 
+const SLOT_WIDTH = 80;
+const baseColors = [
+  "green", "red", "black", "red", "black",
+  "red", "black", "red", "black", "red",
+  "black", "red", "black", "red", "black"
+];
+
 export default function Slider() {
   const sliderRef = useRef<HTMLDivElement>(null);
+  const animationRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(0);
   const [slotOffset, setSlotOffset] = useState(0);
-  const SLOT_WIDTH = 80;
-  const baseColors = ["green", "red", "black", "red", "black"];
 
-  useEffect(() => {
-    const handleSlotOffset = (px: number) => {
-      setSlotOffset(px);
-      if (sliderRef.current) {
-        const totalWidth = baseColors.length * SLOT_WIDTH;
-        sliderRef.current.style.transform = `translateX(-${px % totalWidth}px)`;
+  const animateSlider = (startOffset: number, totalSlots: number, duration: number) => {
+    startTimeRef.current = Date.now();
+
+    const step = () => {
+      const elapsed = Date.now() - startTimeRef.current;
+      const t = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+
+      const currentOffset = startOffset + eased * totalSlots;
+      setSlotOffset(currentOffset);
+
+      if (t < 1) {
+        animationRef.current = requestAnimationFrame(step);
+      } else {
+        animationRef.current = null;
       }
     };
 
-    socket.on("slotOffset", handleSlotOffset);
+    if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    animationRef.current = requestAnimationFrame(step);
+  };
 
+  useEffect(() => {
+    const handleRollStart = (data: any) => {
+      const { startOffsetSlots, totalSlots, duration } = data;
+      animateSlider(startOffsetSlots, totalSlots, duration);
+    };
+
+    socket.on("rollStart", handleRollStart);
     return () => {
-      socket.off("slotOffset", handleSlotOffset);
+      socket.off("rollStart", handleRollStart);
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
   }, []);
 
-  return (
-    <div className="relative w-full overflow-hidden bg-gray-800 h-24 rounded-xl">
+  useEffect(() => {
+    if (!sliderRef.current) return;
+    const totalSlots = baseColors.length;
+    const offsetSlots = (slotOffset) % totalSlots;
+    sliderRef.current.style.transform = `translateX(-${offsetSlots * SLOT_WIDTH + 8 * SLOT_WIDTH}px)`;
+  }, [slotOffset]);
+
+  const renderSlot = (i: number) => {
+    const color = baseColors[i % baseColors.length];
+    return (
       <div
-        ref={sliderRef}
-        className="flex absolute top-0 left-0 h-24 transition-none"
+        key={i}
+        className="w-20 h-24 flex items-center justify-center font-bold text-white"
+        style={{
+          backgroundColor:
+            color === "red" ? "#dc2626" :
+            color === "black" ? "#111827" :
+            "#16a34a",
+        }}
       >
-        {Array.from({ length: 50 }).map((_, i) => {
-          const color = baseColors[i % baseColors.length];
-          return (
-            <div
-              key={i}
-              className={`w-20 h-24 flex items-center justify-center text-white font-bold ${
-                color === "red" ? "bg-red-600" : color === "black" ? "bg-black" : "bg-green-600"
-              }`}
-            >
-              {color}
-            </div>
-          );
-        })}
+        {i % baseColors.length}
       </div>
-      <div className="absolute inset-y-0 left-1/2 w-1 bg-yellow-400 z-10" />
-    </div>
+    );
+  };
+
+  return (
+		<div
+			className="relative m-auto overflow-hidden h-24 rounded-xl bg-gray-800"
+			style={{ width: `${SLOT_WIDTH * 15}px` }}
+			>
+			<div
+				className="flex absolute top-0 left-0 h-24 transition-none"
+				ref={sliderRef}
+			>
+				{Array.from({ length: baseColors.length * 4 }).map((_, i) => renderSlot(i))}
+			</div>
+
+		{/* Marker */}
+			<div className="flex w-full h-full justify-center"><div className="bg-yellow-400 w-1 z-999" /></div>
+		</div>
   );
 }
