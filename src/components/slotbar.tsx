@@ -1,77 +1,96 @@
 "use client";
-import { useState, useEffect, useMemo, useRef } from "react";
-import { baseColors, buildSlotArray } from "@/utils/gameLogic";
+import { useEffect, useState, useRef } from "react";
 import io from "socket.io-client";
 
-const socket = io("http://localhost:3001"); // upewnij się, że to jest Twój backend
+const socket = io("http://localhost:3001", { transports: ["websocket"] });
 
-export default function SlotBar() {
-  const slots = useMemo(() => buildSlotArray(), []);
-  const [offset, setOffset] = useState(0);
-  const requestRef = useRef<number | null>(null);
+const SLOT_WIDTH = 80;
+const baseColors = [
+  "green", "red", "black", "red", "black",
+  "red", "black", "red", "black", "red",
+  "black", "red", "black", "red", "black"
+];
+
+export default function Slider() {
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const animationRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(0);
+  const [slotOffset, setSlotOffset] = useState(0);
+
+  const animateSlider = (startOffset: number, totalSlots: number, duration: number) => {
+    startTimeRef.current = Date.now();
+
+    const step = () => {
+      const elapsed = Date.now() - startTimeRef.current;
+      const t = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+
+      const currentOffset = startOffset + eased * totalSlots;
+      setSlotOffset(currentOffset);
+
+      if (t < 1) {
+        animationRef.current = requestAnimationFrame(step);
+      } else {
+        animationRef.current = null;
+      }
+    };
+
+    if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    animationRef.current = requestAnimationFrame(step);
+  };
 
   useEffect(() => {
-    socket.on("rollStart", ({ rolledIndex, duration }: { rolledIndex: number; duration: number }) => {
-      const slotWidth = 80; // szerokość jednego slotu
-      const visibleSlots = Math.floor(880 / slotWidth); // szerokość kontenera / szerokość slota
-      const centerOffset = Math.floor(visibleSlots / 2);
-
-      // ile pikseli trzeba przesunąć, aby wylosowany slot wylądował na środku
-      const targetOffset =
-        slotWidth * (slots.length * 3 + rolledIndex - centerOffset);
-
-      const start = performance.now();
-
-      const animate = (time: number) => {
-        const elapsed = time - start;
-        const progress = Math.min(elapsed / duration, 1);
-
-        // easing-out (szybki start, zwalnia przy końcu)
-        const ease = 1 - Math.pow(1 - progress, 3);
-
-        setOffset(targetOffset * ease);
-
-        if (progress < 1) {
-          requestRef.current = requestAnimationFrame(animate);
-        }
-      };
-
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
-      requestRef.current = requestAnimationFrame(animate);
-    });
-
-    return () => {
-      socket.off("rollStart");
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    const handleRollStart = (data: any) => {
+      const { startOffsetSlots, totalSlots, duration } = data;
+      animateSlider(startOffsetSlots, totalSlots, duration);
     };
-  }, [slots]);
+
+    socket.on("rollStart", handleRollStart);
+    return () => {
+      socket.off("rollStart", handleRollStart);
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!sliderRef.current) return;
+    const totalSlots = baseColors.length;
+    const offsetSlots = (slotOffset) % totalSlots;
+    sliderRef.current.style.transform = `translateX(-${offsetSlots * SLOT_WIDTH + 8 * SLOT_WIDTH}px)`;
+  }, [slotOffset]);
+
+  const renderSlot = (i: number) => {
+    const color = baseColors[i % baseColors.length];
+    return (
+      <div
+        key={i}
+        className="w-20 h-24 flex items-center justify-center font-bold text-white"
+        style={{
+          backgroundColor:
+            color === "red" ? "#dc2626" :
+            color === "black" ? "#111827" :
+            "#16a34a",
+        }}
+      >
+        {i % baseColors.length}
+      </div>
+    );
+  };
 
   return (
-    <div className="flex justify-center">
-      <div className="slotbar-container w-[880px] overflow-hidden rounded-xl shadow-2xl">
-        <div
-          className="flex w-max"
-          style={{ transform: `translateX(${-offset}px)` }}
-        >
-          {slots.map((num, i) => {
-            const color = baseColors[num % 15];
-            return (
-              <div
-                key={i}
-                className={`w-20 h-20 flex items-center justify-center text-white font-bold text-xl ${
-                  color === "green"
-                    ? "bg-green-600"
-                    : color === "red"
-                    ? "bg-red-600"
-                    : "bg-black"
-                }`}
-              >
-                {num}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
+		<div
+			className="relative m-auto overflow-hidden h-24 rounded-xl bg-gray-800"
+			style={{ width: `${SLOT_WIDTH * 15}px` }}
+			>
+			<div
+				className="flex absolute top-0 left-0 h-24 transition-none"
+				ref={sliderRef}
+			>
+				{Array.from({ length: baseColors.length * 4 }).map((_, i) => renderSlot(i))}
+			</div>
+
+		{/* Marker */}
+			<div className="flex w-full h-full justify-center"><div className="bg-yellow-400 w-1 z-999" /></div>
+		</div>
   );
 }
