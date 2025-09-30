@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { useAnimation } from 'framer-motion';
 import { useUser } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { buildSlotArray, useSound } from '@/utils/gameLogic';
 import io, { Socket } from "socket.io-client";
 
@@ -21,7 +21,7 @@ export const SocketClient = () => {
     redBet: number;
     greenBet: number;
     blackBet: number;
-    showRefuel: boolean;
+    showRefuel?: boolean;
   }
 
   const [localUser, setLocalUser] = useState<UserBets | null>(null);
@@ -29,7 +29,7 @@ export const SocketClient = () => {
   const [roll, setRoll] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [betAmount, setBetAmount] = useState(0);
-  const [socket, setSocket] = useState<typeof Socket | null>(null);
+  const socketRef = useRef<typeof Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const [phase, setPhase] = useState<"waiting" | "rolling" | "result" | "suspended">("waiting");
   const [winningColor, setWinningColor] = useState<string>('');
@@ -38,9 +38,9 @@ export const SocketClient = () => {
   const [showRefuel, setShowRefuel] = useState<boolean | null>(null);
   const [currentBets, setCurrentBets] = useState({ red: 0, green: 0, black: 0 });
   const [bets, setBets] = useState({
-    red: [] as { username: string; amount: number; profile_image_url: string }[],
-    green: [] as { username: string; amount: number; profile_image_url: string }[],
-    black: [] as { username: string; amount: number; profile_image_url: string }[],
+    red: [] as { userId?: string; username: string; amount: number; profile_image_url?: string }[],
+    green: [] as { userId?: string; username: string; amount: number; profile_image_url?: string }[],
+    black: [] as { userId?: string; username: string; amount: number; profile_image_url?: string }[],
   });
   const [slotOffset, setSlotOffset] = useState(0);
   const [roundEnd, setRoundEnd] = useState<number | null>(null);
@@ -48,166 +48,244 @@ export const SocketClient = () => {
 
   const { user } = useUser();
 
-  const slotWidth = 80; 
+  const slotWidth = 80;
   const centerSlot = 10;
   const positionOffset = 5;
 
   useEffect(() => {
-    controls.set({ x: -(centerSlot * slotWidth) }); 
+    controls.set({ x: -(centerSlot * slotWidth) });
   }, []);
-  
-  useEffect(() => {
-    const socketInstance = io("http://localhost:3001");
 
-    socketInstance.on("currentBetData", (data: any) => {
-      setBets({
-        red: Object.values(data.red || {}),
-        green: Object.values(data.green || {}),
-        black: Object.values(data.black || {}),
+  useEffect(() => {
+    // create single socket on mount, cleanup on unmount
+    if (!user) return;
+
+    if (socketRef.current) {
+      // safety: if exists, disconnect first
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+
+    const socketInstance = io("http://localhost:3001", { transports: ["websocket"] });
+    socketRef.current = socketInstance;
+
+    socketInstance.on("connect", () => {
+      setConnected(true);
+      // send user info ASAP
+      socketInstance.emit("userClerkData", {
+        userId: user?.id,
+        username: user?.username,
+        email: user?.emailAddresses?.[0]?.emailAddress,
+        first_name: user?.firstName,
+        last_name: user?.lastName,
+        profile_image_url: user?.imageUrl,
       });
+
+      // explicitly request current bets so we can compute local user's bets on refresh
+      socketInstance.emit("getCurrentBets");
+      // request balance to be safe
+      socketInstance.emit("getBalance");
     });
 
-    setSocket(socketInstance)
-
-    socketInstance.emit("userClerkData", {
-       userId: user?.id,
-       username: user?.username,
-       email: user?.emailAddresses?.[0]?.emailAddress,
-       first_name: user?.firstName,
-       last_name: user?.lastName,
-       profile_image_url: user?.imageUrl,
-    })
-
+    // --- initialState: server snapshot for new connections ---
     socketInstance.on("initialState", (data: any) => {
-      setBalance(data.points);
-      setRollHistory(data.rollHistory);
-      setPhase(data.status);
-      setShowRefuel(data.showRefuel);
-      setCurrentBets(data.globalBets);
-      if (data.roundEnd) setCountdown(Math.max(0, Math.ceil((data.roundEnd - Date.now()) / 1000)));
+      setBalance(data.points ?? 0);
+      setRollHistory(Array.isArray(data.rollHistory) ? data.rollHistory : []);
+      setPhase(data.status ?? "waiting");
+      setShowRefuel(typeof data.showRefuel === "boolean" ? data.showRefuel : null);
+      setCurrentBets(data.globalBets ?? { red: 0, green: 0, black: 0 });
+      if (data.roundEnd) {
+        setRoundEnd(data.roundEnd);
+        setCountdown(Math.max(0, Math.ceil((data.roundEnd - Date.now()) / 1000)));
+      }
+      // if server included userBets or public bets in initialState, apply them
+      if (data.userBets) setLocalUser(data.userBets);
+      if (data.publicBets) setBets(data.publicBets);
+    });
+
+    // --- currentBetData is authoritative snapshot of bets on server (useful after refresh) ---
+    socketInstance.on("currentBetData", (data: any) => {
+      // server sends arrays normalized; convert to our shape
+      const normalizeArr = (arr: any[]) =>
+        (Array.isArray(arr) ? arr : []).map((b) => ({
+          userId: b.userId,
+          username: b.username,
+          amount: b.amount,
+          profile_image_url: b.profile_image_url ?? b.profileImageUrl ?? "/default-avatar.png",
+        }));
+
+      const red = normalizeArr(data.red ?? []);
+      const green = normalizeArr(data.green ?? []);
+      const black = normalizeArr(data.black ?? []);
+      setBets({ red, green, black });
+
+      // compute local user's bet sums by user.id (server gives userId)
+      if (user?.id) {
+        const computeSum = (arr: any[]) =>
+          arr.reduce((acc, item) => (item.userId === user.id ? acc + (item.amount || 0) : acc), 0);
+
+        setLocalUser((prev) => ({
+          points: prev?.points ?? balance,
+          redBet: computeSum(red),
+          greenBet: computeSum(green),
+          blackBet: computeSum(black),
+          showRefuel: prev?.showRefuel ?? false,
+        }));
+      }
     });
 
     socketInstance.on("betsUpdated", (bets: { red: number; green: number; black: number }) => {
       setCurrentBets(bets);
     });
 
-    socketInstance.on("newRoll", async (roll: number[]) => {
-      playSpinSound();
-      setRoll(roll[0]);
-      setSlotOffset(0);
-      playEndRoundSound();
-      setWinningColor(roll[0] === 0 ? 'green' : roll[0] % 2 === 1 ? 'red' : 'black');
-      setBets({ red: [], green: [], black: [] });
-      setRollHistory(roll);
+    // when server broadcasts public bet placed, update list (append or update)
+    socketInstance.on("publicBetPlaced", (data: { username: string; amount: number; color: "red" | "green" | "black"; profile_image_url?: string }) => {
+      setBets(prev => {
+        const updated = { ...prev };
+        const bucket = updated[data.color];
+        // try to find by username then update, else push
+        const existing = bucket.find((b) => b.username === data.username);
+        if (existing) {
+          existing.amount = data.amount;
+          existing.profile_image_url = data.profile_image_url ?? existing.profile_image_url;
+        } else {
+          bucket.push({ username: data.username, amount: data.amount, profile_image_url: data.profile_image_url });
+        }
+        // Also, if this public bet belongs to current user (match by username or user.id if server provided userId in other events),
+        // update localUser sums conservatively: we will re-request currentBetData if uncertain.
+        if (user && data.username === user.username) {
+          setLocalUser(prev => {
+            const prevPoints = prev?.points ?? balance;
+            // best-effort update: increment the specific color bet
+            return {
+              points: prevPoints,
+              redBet: data.color === "red" ? data.amount : (prev?.redBet ?? 0),
+              greenBet: data.color === "green" ? data.amount : (prev?.greenBet ?? 0),
+              blackBet: data.color === "black" ? data.amount : (prev?.blackBet ?? 0),
+              showRefuel: prev?.showRefuel ?? false,
+            } as UserBets;
+          });
+        }
+        return updated;
+      });
     });
 
-    socketInstance.on('slotOffset', (offset: number) => {
-      setSlotOffset(offset);
+    // slider position in px from server
+    socketInstance.on("slotOffset", (offsetPx: number) => {
+      setSlotOffset(offsetPx);
     });
-    
-    socketInstance.on("balanceUpdated", (newBalance: number) => {
-      setBalance(newBalance);
+
+    // roll events
+    socketInstance.on("newRoll", (history: number[]) => {
+      // server sends roll history with newest first (as you had)
+      setRollHistory(Array.isArray(history) ? history : []);
+    });
+
+    socketInstance.on("rollStart", (data: any) => {
+      // optional: server signals roll start; use to play sound or clear UI if server indicates
+      if (data && typeof data.rolledIndex === "number") {
+        setRoll(data.rolledIndex);
+        setWinningColor(data.rolledIndex === 0 ? 'green' : (data.rolledIndex % 2 === 1 ? 'red' : 'black'));
+      }
+      // do not clear bets here — server will send currentBetData/betsUpdated when appropriate
     });
 
     socketInstance.on("status", (statusData: { phase: string; roundEnd?: number }) => {
       setPhase(statusData.phase as any);
-    
       if (statusData.roundEnd) {
+        setRoundEnd(statusData.roundEnd);
         setCountdown(Math.max(0, Math.ceil((statusData.roundEnd - Date.now()) / 1000)));
       }
-    
       if (statusData.phase === "rolling") {
         setWinningColor("");
-        setCurrentBets({ red: 0, green: 0, black: 0 });
       }
     });
-    
-    socketInstance.on('countdown', (seconds: number) => {
+
+    socketInstance.on("countdown", (seconds: number) => {
       setCountdown(seconds);
     });
 
-    socketInstance.on("userBets", (user: UserBets) => {
-      setLocalUser(user);
-    });
-    
-    socketInstance.on("publicBetPlaced", (data: { 
-        username: string; 
-        amount: number;
-        color: "red" | "green" | "black"; 
-        profile_image_url: string 
-      }) => {
-        setBets(prev => {
-          const updated = { ...prev };
-          const existing = updated[data.color].find(b => b.username === data.username);
-      
-          if (existing) {
-            existing.amount = data.amount;
-          } else {
-            updated[data.color].push({
-              username: data.username,
-              amount: data.amount,
-              profile_image_url: data.profile_image_url,
-            });
-          }
-      
-          return updated;
-        });
-      
+    // server may send only the user's bets (fast lane)
+    socketInstance.on("userBets", (userBets: Partial<UserBets>) => {
+      setLocalUser(prev => ({
+        points: userBets.points ?? prev?.points ?? balance,
+        redBet: userBets.redBet ?? prev?.redBet ?? 0,
+        greenBet: userBets.greenBet ?? prev?.greenBet ?? 0,
+        blackBet: userBets.blackBet ?? prev?.blackBet ?? 0,
+        showRefuel: userBets.showRefuel ?? prev?.showRefuel ?? false,
+      }));
     });
 
-    socketInstance.on('showRefuel', (temp: boolean) => {
-      setShowRefuel(temp);
-      
-    });
-
-    socketInstance.on("playerUpdated", (data: { balance: number; refueled?: boolean }) => {
-      setBalance(data.balance);
-      setLocalUser(prev => prev ? { ...prev, points: data.balance } : prev);
-  
+    socketInstance.on("playerUpdated", (data: { balance?: number; refueled?: boolean; userBets?: Partial<UserBets> }) => {
+      if (typeof data.balance === "number") setBalance(data.balance);
+      if (data.userBets) {
+        socketInstance.emit("getCurrentBets"); // authoritative refresh after player update
+        setLocalUser(prev => ({
+          points: data.userBets!.points ?? prev?.points ?? balance,
+          redBet: data.userBets!.redBet ?? prev?.redBet ?? 0,
+          greenBet: data.userBets!.greenBet ?? prev?.greenBet ?? 0,
+          blackBet: data.userBets!.blackBet ?? prev?.blackBet ?? 0,
+          showRefuel: data.userBets!.showRefuel ?? prev?.showRefuel ?? false,
+        }));
+      }
       if (data.refueled) setShowRefuel(false);
     });
 
-    return () => {
-      socketInstance.disconnect();
-    };
-  }, [user?.id]);
+    socketInstance.on("balanceUpdated", (newBalance: number) => {
+      setBalance(newBalance);
+    });
 
-  // Countdown
+    // handle disconnect
+    socketInstance.on("disconnect", () => {
+      setConnected(false);
+    });
+
+    // cleanup on unmount or user change
+    return () => {
+      socketInstance.removeAllListeners();
+      socketInstance.disconnect();
+      socketRef.current = null;
+      setConnected(false);
+    };
+  }, [user]);
+
   useEffect(() => {
     if (!roundEnd) return;
-
-    const interval = setInterval(() => {
+    const iv = setInterval(() => {
       setCountdown(Math.max(0, Math.ceil((roundEnd - Date.now()) / 1000)));
     }, 250);
-
-    return () => clearInterval(interval);
+    return () => clearInterval(iv);
   }, [roundEnd]);
 
-  
   const placeBet = (color: "red" | "green" | "black") => {
+    if (!socketRef.current) return;
     if (phase !== "waiting" || betAmount <= 0 || betAmount > balance) return;
 
-    socket?.emit("placeBet", {  
+    socketRef.current.emit("placeBet", {
       color,
       amount: betAmount,
       username: user?.username || user?.firstName || "Anonymous",
       profile_image_url: user?.imageUrl || null,
     });
+    // do NOT update local state here except maybe optimistically request authoritative snapshot:
+    // ask server for authoritative current bets (helps immediate UI consistency)
+    setTimeout(() => socketRef.current?.emit("getCurrentBets"), 50);
   };
 
   const handleRefresh = () => {
-    if (socket && !refreshing) {
-      setRefreshing(true);
-      socket.emit("getBalance");
-      setTimeout(() => setRefreshing(false), 1000);
-    }
+    if (!socketRef.current || refreshing) return;
+    setRefreshing(true);
+    socketRef.current.emit("getBalance");
+    socketRef.current.emit("getCurrentBets");
+    setTimeout(() => setRefreshing(false), 1000);
   };
 
   const handleRefuel = () => {
-    socket?.emit("refuel");
-    setShowRefuel(false);
+    if (!socketRef.current) return;
+    socketRef.current.emit("refuel");
+    // server will emit playerUpdated/showRefuel -> we react then
   };
-  
+
   return (
     <div className="container">
       <div className="socket-client-container">
@@ -278,81 +356,74 @@ export const SocketClient = () => {
             <button onClick={() => setBetAmount(balance)}>MAX</button>
           </div>
         </div>
-      
+
         <div className="bet-columns">
-  {[...Object.entries(currentBets)].map(([color, amount]) => (
-    <div
-      key={color}
-      className={`bet-column ${color} ${
-        phase === "result" && winningColor && winningColor !== color
-          ? "bet-column-fade"
-          : ""
-      }`}
-    >
-      <button
-        onClick={() => placeBet(color as "red" | "green" | "black")}
-        disabled={phase !== "waiting"}
-        className={`${color}-button`}
-      >
-        Bet {color.charAt(0).toUpperCase() + color.slice(1)}
-      </button>
-      <h4 className="user-bet my-2">
-        {localUser ? localUser[`${color}Bet` as keyof typeof localUser] : 0}
-      </h4>
+          {[...Object.entries(currentBets)].map(([color, amount]) => (
+            <div
+              key={color}
+              className={`bet-column ${color} ${
+                phase === "result" && winningColor && winningColor !== color
+                  ? "bet-column-fade"
+                  : ""
+              }`}
+            >
+              <button
+                onClick={() => placeBet(color as "red" | "green" | "black")}
+                disabled={phase !== "waiting"}
+                className={`${color}-button`}
+              >
+                Bet {color.charAt(0).toUpperCase() + color.slice(1)}
+              </button>
+              <h4 className="user-bet my-2">
+                {localUser ? localUser[`${color}Bet` as keyof typeof localUser] : 0}
+              </h4>
 
-      <div className="global-bet-info flex items-center justify-between px-8 py-2">
-        <div className="flex items-center space-x-4">
-          <img
-            className="w-10 h-10 rounded-full"
-            src="/user.svg"
-            alt="Users icon"
-          />
-          <p className="text-white">{bets[color as "red" | "green" | "black"]?.length || 0}</p>
-        </div>
-        <p className="text-gray-500">
-          Total bet: <span className="text-white">{amount}</span>
-        </p>
-      </div>
-
-      {/* Lista betów użytkowników */}
-      <div className="bet-list">
-        {(!bets[color as "red" | "green" | "black"] || bets[color as "red" | "green" | "black"].length === 0) ? (
-          <div className="flex justify-center items-center h-10 w-full animate-pulse text-gray-400">
-            Loading bets...
-          </div>
-        ) : 
-          (
-            bets[color as "red" | "green" | "black"]
-              .sort((a, b) => b.amount - a.amount)
-              .map((bet, idx) => (
-                <div key={idx} className="bet-item">
-                  <Link href={`/profile/${bet.username}`} target="_blank">
-                    <div className="flex cursor-pointer items-center gap-2">
-                      <img
-                        src={bet.profile_image_url || "/default-avatar.png"}
-                        alt={bet.username}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      <span>{bet.username}</span>
-                    </div>
-                  </Link>
-                  <span className="bet-amount">{bet.amount}</span>
+              <div className="global-bet-info flex items-center justify-between px-8 py-2">
+                <div className="flex items-center space-x-4">
+                  <img
+                    className="w-10 h-10 rounded-full"
+                    src="/user.svg"
+                    alt="Users icon"
+                  />
+                  <p className="text-white">{bets[color as "red" | "green" | "black"]?.length || 0}</p>
                 </div>
-              ))
-          )
-        }
-      </div>
-    </div>
-  ))}
-</div>
+                <p className="text-gray-500">
+                  Total bet: <span className="text-white">{amount}</span>
+                </p>
+              </div>
 
-        {/* <div className="refuel-section">
-          {(showRefuel && phase === "waiting") && (
-            <button className="refuel-btn" onClick={handleRefuel}>
-              Refuel Balance
-            </button>
-          )}
-        </div> */}
+              {/* Lista betów użytkowników */}
+              <div className="bet-list">
+                {(!bets[color as "red" | "green" | "black"] || bets[color as "red" | "green" | "black"].length === 0) ? (
+                  <div className="flex justify-center items-center h-10 w-full animate-pulse text-gray-400">
+                    Loading bets...
+                  </div>
+                ) :
+                  (
+                    bets[color as "red" | "green" | "black"]
+                      .slice() // copy to avoid mutation
+                      .sort((a, b) => b.amount - a.amount)
+                      .map((bet, idx) => (
+                        <div key={idx} className="bet-item">
+                          <Link href={`/profile/${bet.username}`} target="_blank">
+                            <div className="flex cursor-pointer items-center gap-2">
+                              <img
+                                src={bet.profile_image_url || "/default-avatar.png"}
+                                alt={bet.username}
+                                className="w-10 h-10 rounded-full object-cover"
+                              />
+                              <span>{bet.username}</span>
+                            </div>
+                          </Link>
+                          <span className="bet-amount">{bet.amount}</span>
+                        </div>
+                      ))
+                  )
+                }
+              </div>
+            </div>
+          ))}
+        </div>
 
       </div>
     </div>
