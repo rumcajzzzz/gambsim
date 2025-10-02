@@ -1,13 +1,14 @@
 "use client";
-import { motion, useAnimation } from 'framer-motion';
+import "@/styles/socketclient.css";
+import Link from "next/link";
+
+import { useAnimation } from 'framer-motion';
 import { useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
+import { buildSlotArray, useSound } from '@/utils/gameLogic';
 import io, { Socket } from "socket.io-client";
-import "../styles/socketclient.css";
-import Link from "next/link";
-import { baseColors, baseNumbers, buildSlotArray, useSound } from '@/utils/gameLogic';
-import SlotBar from './slotbar';
-import Slider from './slotbar2';
+
+import Slider from '@/components/slotBar';
 
 export const SocketClient = () => {
   const controls = useAnimation();

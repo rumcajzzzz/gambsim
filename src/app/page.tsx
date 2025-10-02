@@ -1,5 +1,5 @@
 "use client";
-import { SocketClient } from "@/components/socket-client";
+import { SocketClient } from "@/components/socketClient";
 
 export default function Home() {
 
