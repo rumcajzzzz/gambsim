@@ -59,7 +59,12 @@ export const SocketClient = () => {
   useEffect(() => {
     const socketInstance = io("http://localhost:3001");
 
-    socketInstance.on("currentBetData", (data: any) => {
+    socketInstance.emit("getCurrentBets");
+
+    // odbierz odpowiedź
+    socketInstance.on("currentBets", (data: any) => {
+      console.log("Current bets:", data);
+
       setBets({
         red: Object.values(data.red || {}),
         green: Object.values(data.green || {}),
