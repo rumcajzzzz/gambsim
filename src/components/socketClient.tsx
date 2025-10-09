@@ -57,22 +57,21 @@ export const SocketClient = () => {
   }, []);
   
   useEffect(() => {
+
     const socketInstance = io("http://localhost:3001");
+    setSocket(socketInstance)
 
-    socketInstance.emit("getCurrentBets");
+    socketInstance.emit("getCurrentBets", user?.id);
 
-    // odbierz odpowiedź
     socketInstance.on("currentBets", (data: any) => {
-      console.log("Current bets:", data);
-
       setBets({
         red: Object.values(data.red || {}),
         green: Object.values(data.green || {}),
         black: Object.values(data.black || {}),
       });
+    
+      setCurrentBets(data.userBets);
     });
-
-    setSocket(socketInstance)
 
     socketInstance.emit("userClerkData", {
        userId: user?.id,
@@ -104,6 +103,7 @@ export const SocketClient = () => {
       setWinningColor(roll[0] === 0 ? 'green' : roll[0] % 2 === 1 ? 'red' : 'black');
       setBets({ red: [], green: [], black: [] });
       setRollHistory(roll);
+      setTimeout(() => setWinningColor(""), 2000);
     });
 
     socketInstance.on('slotOffset', (offset: number) => {
@@ -123,7 +123,6 @@ export const SocketClient = () => {
     
       if (statusData.phase === "rolling") {
         setWinningColor("");
-        setCurrentBets({ red: 0, green: 0, black: 0 });
       }
     });
     
@@ -136,29 +135,32 @@ export const SocketClient = () => {
     });
     
     socketInstance.on("publicBetPlaced", (data: { 
-        username: string; 
-        amount: number;
-        color: "red" | "green" | "black"; 
-        profile_image_url: string 
-      }) => {
-        setBets(prev => {
-          const updated = { ...prev };
-          const existing = updated[data.color].find(b => b.username === data.username);
-      
-          if (existing) {
-            existing.amount = data.amount;
-          } else {
-            updated[data.color].push({
-              username: data.username,
-              amount: data.amount,
-              profile_image_url: data.profile_image_url,
-            });
-          }
-      
-          return updated;
+      username: string; 
+      amount: number;
+      color: "red" | "green" | "black"; 
+      profile_image_url: string 
+  }) => {
+    setBets(prev => {
+      const updated = { ...prev };
+      const existing = updated[data.color].find(b => b.username === data.username);
+  
+      if (existing) {
+        // Aktualizujemy tylko kwotę dla tego użytkownika
+        existing.amount = data.amount;
+      } else {
+        // Dodajemy nowego użytkownika do listy
+        updated[data.color].push({
+          username: data.username,
+          amount: data.amount,
+          profile_image_url: data.profile_image_url,
         });
-      
+      }
+  
+      return updated;
     });
+  
+    // UWAGA: Nie ruszamy currentBets (user-bet) – ono będzie ustawiane tylko przez 'currentBets' event
+  });
 
     socketInstance.on('showRefuel', (temp: boolean) => {
       setShowRefuel(temp);
@@ -172,11 +174,13 @@ export const SocketClient = () => {
       if (data.refueled) setShowRefuel(false);
     });
 
+ 
+
     return () => {
       socketInstance.disconnect();
     };
   }, [user?.id]);
-
+  
   // Countdown
   useEffect(() => {
     if (!roundEnd) return;
@@ -285,71 +289,71 @@ export const SocketClient = () => {
         </div>
       
         <div className="bet-columns">
-  {[...Object.entries(currentBets)].map(([color, amount]) => (
-    <div
-      key={color}
-      className={`bet-column ${color} ${
-        phase === "result" && winningColor && winningColor !== color
-          ? "bet-column-fade"
-          : ""
-      }`}
-    >
-      <button
-        onClick={() => placeBet(color as "red" | "green" | "black")}
-        disabled={phase !== "waiting"}
-        className={`${color}-button`}
-      >
-        Bet {color.charAt(0).toUpperCase() + color.slice(1)}
-      </button>
-      <h4 className="user-bet my-2">
-        {localUser ? localUser[`${color}Bet` as keyof typeof localUser] : 0}
-      </h4>
+          {[...Object.entries(currentBets)].map(([color, amount]) => (
+            <div
+              key={color}
+              className={`bet-column ${color} ${
+                winningColor && winningColor !== color
+                  ? "bet-column-fade"
+                  : ""
+              }`}
+            >
+              <button
+                onClick={() => placeBet(color as "red" | "green" | "black")}
+                disabled={phase !== "waiting"}
+                className={`${color}-button`}
+              >
+                Bet {color.charAt(0).toUpperCase() + color.slice(1)}
+              </button>
+              <h4 className="user-bet my-2">
+                {currentBets[color as "red" | "green" | "black"] || 0}
+              </h4>
 
-      <div className="global-bet-info flex items-center justify-between px-8 py-2">
-        <div className="flex items-center space-x-4">
-          <img
-            className="w-10 h-10 rounded-full"
-            src="/user.svg"
-            alt="Users icon"
-          />
-          <p className="text-white">{bets[color as "red" | "green" | "black"]?.length || 0}</p>
-        </div>
-        <p className="text-gray-500">
-          Total bet: <span className="text-white">{amount}</span>
-        </p>
-      </div>
-
-      {/* Lista betów użytkowników */}
-      <div className="bet-list">
-        {(!bets[color as "red" | "green" | "black"] || bets[color as "red" | "green" | "black"].length === 0) ? (
-          <div className="flex justify-center items-center h-10 w-full animate-pulse text-gray-400">
-            Loading bets...
-          </div>
-        ) : 
-          (
-            bets[color as "red" | "green" | "black"]
-              .sort((a, b) => b.amount - a.amount)
-              .map((bet, idx) => (
-                <div key={idx} className="bet-item">
-                  <Link href={`/profile/${bet.username}`} target="_blank">
-                    <div className="flex cursor-pointer items-center gap-2">
-                      <img
-                        src={bet.profile_image_url || "/default-avatar.png"}
-                        alt={bet.username}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      <span>{bet.username}</span>
-                    </div>
-                  </Link>
-                  <span className="bet-amount">{bet.amount}</span>
+              <div className="global-bet-info flex items-center justify-between px-8 py-2">
+                <div className="flex items-center space-x-4">
+                  <img
+                    className="w-10 h-10 rounded-full"
+                    src="/user.svg"
+                    alt="Users icon"
+                  />
+                  <p className="text-white">{bets[color as "red" | "green" | "black"]?.length || 0}</p>
                 </div>
-              ))
-          )
-        }
-      </div>
-    </div>
-  ))}
-</div>
+                <p className="text-gray-500">
+                  Total bet: <span className="text-white">{amount}</span>
+                </p>
+              </div>
+
+              {/* Lista betów użytkowników */}
+              <div className="bet-list">
+                {(!bets[color as "red" | "green" | "black"] || bets[color as "red" | "green" | "black"].length === 0) ? (
+                  <div className="flex justify-center items-center h-10 w-full animate-pulse text-gray-400">
+                    Loading bets...
+                  </div>
+                ) : 
+                  (
+                    bets[color as "red" | "green" | "black"]
+                      .sort((a, b) => b.amount - a.amount)
+                      .map((bet, idx) => (
+                        <div key={idx} className="bet-item">
+                          <Link href={`/profile/${bet.username}`} target="_blank">
+                            <div className="flex cursor-pointer items-center gap-2">
+                              <img
+                                src={bet.profile_image_url || "/default-avatar.png"}
+                                alt={bet.username}
+                                className="w-10 h-10 rounded-full object-cover"
+                              />
+                              <span>{bet.username}</span>
+                            </div>
+                          </Link>
+                          <span className="bet-amount">{bet.amount}</span>
+                        </div>
+                      ))
+                  )
+                }
+              </div>
+            </div>
+          ))}
+        </div>
 
         {/* <div className="refuel-section">
           {(showRefuel && phase === "waiting") && (

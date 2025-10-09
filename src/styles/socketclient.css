@@ -274,6 +274,7 @@
   .bet-amount {
 	color: var(--color-red)
   }
+  
   @keyframes fadeIn {
 	from {
 	  opacity: 0;
