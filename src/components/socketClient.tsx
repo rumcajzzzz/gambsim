@@ -64,15 +64,24 @@ export const SocketClient = () => {
     socketInstance.emit("getCurrentBets", user?.id);
 
     socketInstance.on("currentBets", (data: any) => {
+      const mapBets = (betsObj: any) => {
+        if (!betsObj) return [];
+        return Object.values(betsObj).map((b: any) => ({
+          username: b.username,
+          amount: b.amount,
+          profile_image_url: b.profile_image_url || "/default-avatar.png",
+        }));
+      };
+    
       setBets({
-        red: Object.values(data.red || {}),
-        green: Object.values(data.green || {}),
-        black: Object.values(data.black || {}),
+        red: mapBets(data.red),
+        green: mapBets(data.green),
+        black: mapBets(data.black),
       });
     
       setCurrentBets(data.userBets);
     });
-
+    
     socketInstance.emit("userClerkData", {
        userId: user?.id,
        username: user?.username,
@@ -139,46 +148,46 @@ export const SocketClient = () => {
       amount: number;
       color: "red" | "green" | "black"; 
       profile_image_url: string 
-  }) => {
-    setBets(prev => {
-      const updated = { ...prev };
-      const existing = updated[data.color].find(b => b.username === data.username);
-  
-      if (existing) {
-        // Aktualizujemy tylko kwotę dla tego użytkownika
-        existing.amount = data.amount;
-      } else {
-        // Dodajemy nowego użytkownika do listy
-        updated[data.color].push({
-          username: data.username,
-          amount: data.amount,
-          profile_image_url: data.profile_image_url,
-        });
-      }
-  
-      return updated;
-    });
-  
-    // UWAGA: Nie ruszamy currentBets (user-bet) – ono będzie ustawiane tylko przez 'currentBets' event
-  });
-
-    socketInstance.on('showRefuel', (temp: boolean) => {
-      setShowRefuel(temp);
+    }) => {
+        setBets(prev => {
+          const updated = { ...prev };
+          const existing = updated[data.color].find(b => b.username === data.username);
       
-    });
+          if (existing) {
+            // Aktualizujemy tylko kwotę dla tego użytkownika
+            existing.amount = data.amount;
+          } else {
+            // Dodajemy nowego użytkownika do listy
+            updated[data.color].push({
+              username: data.username,
+              amount: data.amount,
+              profile_image_url: data.profile_image_url,
+            });
+          }
+      
+          return updated;
+        });
+      
+        // UWAGA: Nie ruszamy currentBets (user-bet) – ono będzie ustawiane tylko przez 'currentBets' event
+      });
 
-    socketInstance.on("playerUpdated", (data: { balance: number; refueled?: boolean }) => {
-      setBalance(data.balance);
-      setLocalUser(prev => prev ? { ...prev, points: data.balance } : prev);
-  
-      if (data.refueled) setShowRefuel(false);
-    });
+        socketInstance.on('showRefuel', (temp: boolean) => {
+          setShowRefuel(temp);
+          
+        });
 
- 
+        socketInstance.on("playerUpdated", (data: { balance: number; refueled?: boolean }) => {
+          setBalance(data.balance);
+          setLocalUser(prev => prev ? { ...prev, points: data.balance } : prev);
+      
+          if (data.refueled) setShowRefuel(false);
+        });
 
-    return () => {
-      socketInstance.disconnect();
-    };
+    
+
+        return () => {
+          socketInstance.disconnect();
+        };
   }, [user?.id]);
   
   // Countdown
@@ -192,7 +201,6 @@ export const SocketClient = () => {
     return () => clearInterval(interval);
   }, [roundEnd]);
 
-  
   const placeBet = (color: "red" | "green" | "black") => {
     if (phase !== "waiting" || betAmount <= 0 || betAmount > balance) return;
 
@@ -323,7 +331,6 @@ export const SocketClient = () => {
                 </p>
               </div>
 
-              {/* Lista betów użytkowników */}
               <div className="bet-list">
                 {(!bets[color as "red" | "green" | "black"] || bets[color as "red" | "green" | "black"].length === 0) ? (
                   <div className="flex justify-center items-center h-10 w-full animate-pulse text-gray-400">
