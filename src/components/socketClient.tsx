@@ -148,46 +148,61 @@ export const SocketClient = () => {
       amount: number;
       color: "red" | "green" | "black"; 
       profile_image_url: string 
-    }) => {
-        setBets(prev => {
-          const updated = { ...prev };
-          const existing = updated[data.color].find(b => b.username === data.username);
+      }) => {
+          setBets(prev => {
+            const updated = { ...prev };
+            const existing = updated[data.color].find(b => b.username === data.username);
+        
+            if (existing) {
+              // Aktualizujemy tylko kwotę dla tego użytkownika
+              existing.amount = data.amount;
+            } else {
+              // Dodajemy nowego użytkownika do listy
+              updated[data.color].push({
+                username: data.username,
+                amount: data.amount,
+                profile_image_url: data.profile_image_url,
+              });
+            }
+        
+            return updated;
+          });
+        
+          // UWAGA: Nie ruszamy currentBets (user-bet) – ono będzie ustawiane tylko przez 'currentBets' event
+    });
+
+    socketInstance.on('showRefuel', (temp: boolean) => {
+      setShowRefuel(temp);
       
-          if (existing) {
-            // Aktualizujemy tylko kwotę dla tego użytkownika
-            existing.amount = data.amount;
-          } else {
-            // Dodajemy nowego użytkownika do listy
-            updated[data.color].push({
-              username: data.username,
-              amount: data.amount,
-              profile_image_url: data.profile_image_url,
-            });
-          }
-      
-          return updated;
-        });
-      
-        // UWAGA: Nie ruszamy currentBets (user-bet) – ono będzie ustawiane tylko przez 'currentBets' event
+    });
+
+    socketInstance.on("playerUpdated", (data: { balance: number; refueled?: boolean }) => {
+      setBalance(data.balance);
+      setLocalUser(prev => prev ? { ...prev, points: data.balance } : prev);
+  
+      if (data.refueled) setShowRefuel(false);
+    });
+
+    socketInstance.on("userBetUpdate", (data: { redBet: number; greenBet: number; blackBet: number }) => {
+      setLocalUser(prev => prev ? {
+        ...prev,
+        redBet: data.redBet,
+        greenBet: data.greenBet,
+        blackBet: data.blackBet,
+      } : {
+        redBet: data.redBet,
+        greenBet: data.greenBet,
+        blackBet: data.blackBet,
+        points: 0,
+        showRefuel: false,
       });
-
-        socketInstance.on('showRefuel', (temp: boolean) => {
-          setShowRefuel(temp);
-          
-        });
-
-        socketInstance.on("playerUpdated", (data: { balance: number; refueled?: boolean }) => {
-          setBalance(data.balance);
-          setLocalUser(prev => prev ? { ...prev, points: data.balance } : prev);
-      
-          if (data.refueled) setShowRefuel(false);
-        });
-
+    });
     
 
-        return () => {
-          socketInstance.disconnect();
-        };
+    return () => {
+      socketInstance.disconnect();
+    };
+
   }, [user?.id]);
   
   // Countdown
@@ -314,7 +329,11 @@ export const SocketClient = () => {
                 Bet {color.charAt(0).toUpperCase() + color.slice(1)}
               </button>
               <h4 className="user-bet my-2">
-                {currentBets[color as "red" | "green" | "black"] || 0}
+                {localUser ? {
+                  red: localUser.redBet,
+                  green: localUser.greenBet,
+                  black: localUser.blackBet
+                }[color] : 0}
               </h4>
 
               <div className="global-bet-info flex items-center justify-between px-8 py-2">
@@ -373,4 +392,5 @@ export const SocketClient = () => {
       </div>
     </div>
   );
+
 };
