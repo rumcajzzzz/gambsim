@@ -346,7 +346,15 @@ export const SocketClient = () => {
                   <p className="text-white">{bets[color as "red" | "green" | "black"]?.length || 0}</p>
                 </div>
                 <p className="text-gray-500">
-                  Total bet: <span className="text-white">{amount}</span>
+                  Total bet:{" "}
+                  <span className="text-white">
+                    {bets[color as "red" | "green" | "black"]
+                      ? bets[color as "red" | "green" | "black"].reduce(
+                          (sum, bet) => sum + bet.amount,
+                          0
+                        )
+                      : 0}
+                  </span>
                 </p>
               </div>
 
@@ -380,15 +388,7 @@ export const SocketClient = () => {
             </div>
           ))}
         </div>
-
-        {/* <div className="refuel-section">
-          {(showRefuel && phase === "waiting") && (
-            <button className="refuel-btn" onClick={handleRefuel}>
-              Refuel Balance
-            </button>
-          )}
-        </div> */}
-
+        
       </div>
     </div>
   );
