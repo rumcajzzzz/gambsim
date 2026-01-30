@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { buildSlotArray, useSound } from '@/utils/gameLogic';
 import io, { Socket } from "socket.io-client";
 
-import Slider from '@/components/slotBar';
+import Slider from '../components/slotBar';
 
 export const SocketClient = () => {
   const controls = useAnimation();
@@ -58,9 +58,11 @@ export const SocketClient = () => {
   
   useEffect(() => {
 
-    const socketInstance = io("http://localhost:3001");
-    setSocket(socketInstance)
+    const socketInstance = io(process.env.BACKEND_URL || "http://localhost:3001", {
+      transports: ["websocket"],
+    });
 
+    setSocket(socketInstance)
     socketInstance.emit("getCurrentBets", user?.id);
 
     socketInstance.on("currentBets", (data: any) => {
@@ -167,8 +169,6 @@ export const SocketClient = () => {
         
             return updated;
           });
-        
-          // UWAGA: Nie ruszamy currentBets (user-bet) – ono będzie ustawiane tylko przez 'currentBets' event
     });
 
     socketInstance.on('showRefuel', (temp: boolean) => {
