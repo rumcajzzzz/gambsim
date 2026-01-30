@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { buildSlotArray, useSound } from '@/utils/gameLogic';
 import io, { Socket } from "socket.io-client";
 
-import Slider from '../components/slotBar';
+import Slider from '@/components/slotBar';
 
 export const SocketClient = () => {
   const controls = useAnimation();
