@@ -33,8 +33,8 @@ export default function Slider({ userId }: { userId?: string }) {
   };
 
   useEffect(() => {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL!;
-    const socketInstance = io(backendUrl, { transports: ["websocket"] });
+    // const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL!;
+    const socketInstance = io("https://gambsim-backend.onrender.com", { transports: ["websocket"] });
     setSocket(socketInstance);
 
     return () => {

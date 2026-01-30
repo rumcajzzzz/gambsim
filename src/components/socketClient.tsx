@@ -58,7 +58,7 @@ export const SocketClient = () => {
   
   useEffect(() => {
 
-    const socketInstance = io(process.env.BACKEND_URL || "http://localhost:3001", {
+    const socketInstance = io("https://gambsim-backend.onrender.com", {
       transports: ["websocket"],
     });
 
