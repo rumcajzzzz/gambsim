@@ -10,8 +10,12 @@ export async function generateStaticParams() {
   return [];
 }
 
-const ProfilePage = async ({ params }: { params: { username: string } }) => {
-  const { username } = params;
+interface PageProps {
+  params: Promise<{ username: string }>;
+}
+
+const ProfilePage = async ({ params }: PageProps) => {
+  const { username } = await params;
 
   if (!username) notFound();
 
