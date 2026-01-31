@@ -107,14 +107,13 @@ export const SocketClient = () => {
     });
 
     socketInstance.on("newRoll", async (roll: number[]) => {
-      playSpinSound();
       setRoll(roll[0]);
       setSlotOffset(0);
-      playEndRoundSound();
       setWinningColor(roll[0] === 0 ? 'green' : roll[0] % 2 === 1 ? 'red' : 'black');
       setBets({ red: [], green: [], black: [] });
       setRollHistory(roll);
       setTimeout(() => setWinningColor(""), 2000);
+      playEndRoundSound();
     });
 
     socketInstance.on('slotOffset', (offset: number) => {
@@ -134,6 +133,7 @@ export const SocketClient = () => {
     
       if (statusData.phase === "rolling") {
         setWinningColor("");
+        setTimeout(() => playSpinSound(), 2000);
       }
     });
     
@@ -156,10 +156,8 @@ export const SocketClient = () => {
             const existing = updated[data.color].find(b => b.username === data.username);
         
             if (existing) {
-              // Aktualizujemy tylko kwotę dla tego użytkownika
               existing.amount = data.amount;
             } else {
-              // Dodajemy nowego użytkownika do listy
               updated[data.color].push({
                 username: data.username,
                 amount: data.amount,
@@ -205,7 +203,6 @@ export const SocketClient = () => {
 
   }, [user?.id]);
   
-  // Countdown
   useEffect(() => {
     if (!roundEnd) return;
 
@@ -291,7 +288,7 @@ export const SocketClient = () => {
           <h2>{refreshing ? "..." : balance}</h2>
             {showRefuel && phase === "waiting" ? (
                 <button className="refuel-button" onClick={handleRefuel}>
-                  <img src="/refuelicon.svg" alt="refuel icon" className='w-10 h-10 aspect-1/1 invert' />
+                  <img src="/refuelicon.svg" alt="refuel icon" className='w-10 h-10 aspect-square invert' />
                 </button>
               ) : (
                 <button className="balance-refresh-button" onClick={handleRefresh} disabled={refreshing}>
